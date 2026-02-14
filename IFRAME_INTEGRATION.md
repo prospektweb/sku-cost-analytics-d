@@ -98,10 +98,8 @@ The application builds with fixed filenames for easy Bitrix integration:
 dist/
 ├── dashboard.html
 └── assets/
-    ├── db-index.js        # Main bundle
-    ├── db-index.es.js     # ES module bundle
-    ├── db-purify.es.js    # DOMPurify module
-    └── db-style.css       # Styles
+    ├── db-index.js        # Main bundle (single file)
+    └── db-style.css       # Single CSS file
 ```
 
 ### Build Settings

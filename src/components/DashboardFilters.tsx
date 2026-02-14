@@ -46,7 +46,8 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
         selectedPriceTypeIds: priceTypes.map(pt => pt.id),
       });
     }
-  }, [priceTypes, filters, onFiltersChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceTypes]);
 
   const togglePriceType = (typeId: number) => {
     const newSelected = filters.selectedPriceTypeIds.includes(typeId)
