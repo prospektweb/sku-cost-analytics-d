@@ -37,12 +37,23 @@ export const useDashboardStore = create<DashboardState>((set) => ({
 // Set up postMessage listener
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (event) => {
-    if (event.data?.type === 'PROSPEKTWEB_CALC_DASHBOARD_INIT') {
-      const { offerId, history } = event.data;
-      
-      if (offerId && history) {
-        useDashboardStore.getState().initializeFromPostMessage(offerId, history);
-      }
+    // Validate message type first
+    if (event.data?.type !== 'PROSPEKTWEB_CALC_DASHBOARD_INIT') {
+      return;
+    }
+
+    // Note: Origin validation is intentionally permissive for iframe embedding.
+    // In production, you should validate event.origin against trusted domains:
+    // const trustedOrigins = ['https://your-bitrix-domain.com'];
+    // if (!trustedOrigins.includes(event.origin)) {
+    //   console.warn('Rejected postMessage from untrusted origin:', event.origin);
+    //   return;
+    // }
+    
+    const { offerId, history } = event.data;
+    
+    if (offerId && history) {
+      useDashboardStore.getState().initializeFromPostMessage(offerId, history);
     }
   });
 }

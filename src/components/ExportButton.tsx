@@ -70,8 +70,9 @@ export function ExportButton({ snapshots }: ExportButtonProps) {
     try {
       toast.info('Подготовка PDF, пожалуйста подождите...');
       
-      // Find the dashboard content container
-      const dashboardElement = document.querySelector('.container') as HTMLElement;
+      // Find the dashboard content container using data attribute or class
+      const dashboardElement = document.querySelector('[data-dashboard-root]') as HTMLElement || 
+                               document.querySelector('.container') as HTMLElement;
       if (!dashboardElement) {
         throw new Error('Dashboard element not found');
       }
@@ -127,7 +128,7 @@ export function ExportButton({ snapshots }: ExportButtonProps) {
 
       // Save PDF
       const timestamp = new Date().toISOString().split('T')[0];
-      pdf.save(`sku-cost-analysis-${timestamp}.pdf`);
+      pdf.save(`sku-cost-analytics-${timestamp}.pdf`);
       
       toast.success('PDF экспортирован успешно');
     } catch (error) {

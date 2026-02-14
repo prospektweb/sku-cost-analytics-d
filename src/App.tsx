@@ -59,7 +59,7 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-8 py-8">
+      <div className="container mx-auto px-8 py-8" data-dashboard-root>
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-semibold tracking-tight" style={{ letterSpacing: '-0.02em' }}>
