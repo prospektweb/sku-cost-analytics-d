@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { ChartLine } from '@phosphor-icons/react';
-import type { Snapshot } from '@/lib/types';
+import type { Snapshot, Detail, Stage } from '@/lib/types';
 import { formatNumber, formatKey, getChartColor } from '@/lib/data-utils';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -51,7 +51,7 @@ export function CumulativeOutputsChart({ snapshot }: CumulativeOutputsChartProps
 }
 
 interface DetailChartsProps {
-  detail: any;
+  detail: Detail;
   detailIndex: number;
 }
 
@@ -60,7 +60,7 @@ function DetailCharts({ detail, detailIndex }: DetailChartsProps) {
   const numericParameters = useMemo(() => {
     const paramsSet = new Set<string>();
     
-    detail.stages.forEach((stage: any) => {
+    detail.stages.forEach((stage: Stage) => {
       Object.entries(stage.outputs).forEach(([key, value]) => {
         if (typeof value === 'number') {
           paramsSet.add(key);
@@ -92,10 +92,10 @@ function DetailCharts({ detail, detailIndex }: DetailChartsProps) {
   // Prepare chart data for each visible parameter
   const chartsData = useMemo(() => {
     return visibleParameters.map((param) => {
-      const data = detail.stages.map((stage: any, stageIndex: number) => {
-        const cumulativeValue = stage.outputs[param] || 0;
+      const data = detail.stages.map((stage: Stage, stageIndex: number) => {
+        const cumulativeValue = (stage.outputs[param] as number) || 0;
         const previousValue = stageIndex > 0 
-          ? (detail.stages[stageIndex - 1].outputs[param] || 0)
+          ? ((detail.stages[stageIndex - 1].outputs[param] as number) || 0)
           : 0;
         const delta = cumulativeValue - previousValue;
 
