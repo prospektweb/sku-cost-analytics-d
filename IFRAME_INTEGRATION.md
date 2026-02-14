@@ -90,23 +90,16 @@ See `/tmp/test-postmessage.html` for a complete working example.
 - **Snapshot Comparison**: Compare two calculation snapshots
 - **Stage Outputs**: Detailed view of stage parameters
 
-### 4. Export Options
-- **PDF Export**: Captures current dashboard state as PDF (A4 landscape)
-- **JSON Export**: Downloads raw snapshot data
-- **CSV Export**: Exports tabular data for spreadsheets
-
 ## Build Configuration
 
 The application builds with fixed filenames for easy Bitrix integration:
 
 ```
 dist/
-├── index.html
+├── dashboard.html
 └── assets/
-    ├── index.js        # Main bundle
-    ├── index.es.js     # ES module bundle
-    ├── purify.es.js    # DOMPurify module
-    └── style.css       # Styles
+    ├── db-index.js        # Main bundle (single file)
+    └── db-style.css       # Single CSS file
 ```
 
 ### Build Settings

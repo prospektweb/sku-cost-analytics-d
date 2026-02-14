@@ -75,7 +75,7 @@ export function formatDate(date: Date): string {
 
 export function extractPriceTimeSeries(
   snapshots: Snapshot[],
-  priceTypeId: number | null
+  selectedPriceTypeIds: number[]
 ): PriceDataPoint[] {
   const dataPoints: PriceDataPoint[] = [];
 
@@ -84,7 +84,8 @@ export function extractPriceTimeSeries(
 
     snapshot.json.priceRangesWithMarkup.forEach((range) => {
       range.prices.forEach((price) => {
-        if (!priceTypeId || price.typeId === priceTypeId) {
+        // If empty array, show nothing. If has values, filter by them
+        if (selectedPriceTypeIds.length === 0 || selectedPriceTypeIds.includes(price.typeId)) {
           dataPoints.push({
             timestamp,
             dateTime: snapshot.dateTime,
@@ -289,46 +290,4 @@ export function compareSnapshots(
 
 export function getChartColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
-}
-
-export function exportToCSV(data: Record<string, unknown>[], filename: string): void {
-  if (data.length === 0) return;
-
-  const headers = Object.keys(data[0]);
-  const csvRows = [headers.join(',')];
-
-  data.forEach((row) => {
-    const values = headers.map((header) => {
-      const value = row[header];
-      const escaped = String(value).replace(/"/g, '""');
-      return `"${escaped}"`;
-    });
-    csvRows.push(values.join(','));
-  });
-
-  const csvContent = csvRows.join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-export function exportToJSON(data: unknown, filename: string): void {
-  const jsonContent = JSON.stringify(data, null, 2);
-  const blob = new Blob([jsonContent], { type: 'application/json' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }

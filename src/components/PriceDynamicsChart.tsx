@@ -8,19 +8,17 @@ import { Badge } from '@/components/ui/badge';
 
 interface PriceDynamicsChartProps {
   snapshots: Snapshot[];
-  priceTypeId: number | null;
-  showAllPriceTypes: boolean;
+  selectedPriceTypeIds: number[];
 }
 
 export function PriceDynamicsChart({
   snapshots,
-  priceTypeId,
-  showAllPriceTypes,
+  selectedPriceTypeIds,
 }: PriceDynamicsChartProps) {
   const [hiddenPriceTypes, setHiddenPriceTypes] = useState<Set<number>>(new Set());
 
   const chartData = useMemo(() => {
-    const pricePoints = extractPriceTimeSeries(snapshots, showAllPriceTypes ? null : priceTypeId);
+    const pricePoints = extractPriceTimeSeries(snapshots, selectedPriceTypeIds);
 
     const groupedByTimestamp = new Map<number, Record<string, number | string>>();
 
@@ -43,7 +41,7 @@ export function PriceDynamicsChart({
       const bTime = typeof b.timestamp === 'number' ? b.timestamp : 0;
       return aTime - bTime;
     });
-  }, [snapshots, priceTypeId, showAllPriceTypes]);
+  }, [snapshots, selectedPriceTypeIds]);
 
   const priceTypeKeys = useMemo(() => {
     if (chartData.length === 0) return [];
@@ -77,8 +75,8 @@ export function PriceDynamicsChart({
 
   if (snapshots.length === 0) {
     return (
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-6">
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-3">
           <ChartLine size={20} className="text-primary" />
           <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
         </div>
@@ -90,13 +88,13 @@ export function PriceDynamicsChart({
   }
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center gap-2 mb-6">
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-3">
         <ChartLine size={20} className="text-primary" />
         <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-3">
         {priceTypeKeys.map((key, index) => {
           const [label, typeIdStr] = key.split('_');
           const typeId = parseInt(typeIdStr);
@@ -150,7 +148,7 @@ export function PriceDynamicsChart({
 
                       const pricePoints = extractPriceTimeSeries(
                         snapshots,
-                        showAllPriceTypes ? null : priceTypeId
+                        selectedPriceTypeIds
                       );
                       const currentPoint = pricePoints.find(
                         (p) =>

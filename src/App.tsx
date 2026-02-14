@@ -7,7 +7,6 @@ import { CostBreakdown } from '@/components/CostBreakdown';
 import { CostTree } from '@/components/CostTree';
 import { SnapshotComparison } from '@/components/SnapshotComparison';
 import { StageOutputs } from '@/components/StageOutputs';
-import { ExportButton } from '@/components/ExportButton';
 import { api } from '@/lib/api';
 import { useDashboardStore } from '@/lib/store';
 import type { FilterState } from '@/lib/types';
@@ -25,13 +24,11 @@ function DashboardContent() {
   const { isInitialized, offerId: storeOfferId } = useDashboardStore();
   
   const [filters, setFilters] = useState<FilterState>({
-    offerId: null,
     offerName: null,
     dateFrom: null,
     dateTo: null,
     presetId: null,
-    priceTypeId: null,
-    showAllPriceTypes: true,
+    selectedPriceTypeIds: [],
   });
 
   const { data: snapshots = [], isLoading, error } = useQuery({
@@ -59,20 +56,8 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-8 py-8" data-dashboard-root>
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-semibold tracking-tight" style={{ letterSpacing: '-0.02em' }}>
-              SKU Cost Analytics Dashboard
-            </h1>
-            <ExportButton snapshots={snapshots} />
-          </div>
-          <p className="text-muted-foreground">
-            Анализ истории расчетов себестоимости и формирования цен торговых предложений (ID: {storeOfferId})
-          </p>
-        </div>
-
-        <div className="space-y-6">
+      <div className="w-full px-4 py-4" data-dashboard-root>
+        <div className="space-y-4">
           <DashboardFilters filters={filters} onFiltersChange={setFilters} />
 
           {isLoading && (
@@ -97,11 +82,10 @@ function DashboardContent() {
             <>
               <PriceDynamicsChart
                 snapshots={snapshots}
-                priceTypeId={filters.priceTypeId}
-                showAllPriceTypes={filters.showAllPriceTypes}
+                selectedPriceTypeIds={filters.selectedPriceTypeIds}
               />
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 <CostBreakdown snapshot={latestSnapshot} />
                 <CostTree snapshot={latestSnapshot} />
               </div>

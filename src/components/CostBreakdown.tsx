@@ -25,8 +25,8 @@ export function CostBreakdown({ snapshot }: CostBreakdownProps) {
 
   if (!snapshot) {
     return (
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-6">
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-3">
           <ChartPie size={20} className="text-primary" />
           <h2 className="text-lg font-semibold">Распределение себестоимости</h2>
         </div>
@@ -38,20 +38,20 @@ export function CostBreakdown({ snapshot }: CostBreakdownProps) {
   }
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center gap-2 mb-6">
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-3">
         <ChartPie size={20} className="text-primary" />
         <h2 className="text-lg font-semibold">Распределение себестоимости</h2>
       </div>
 
       <Tabs value={aggregation} onValueChange={(v) => setAggregation(v as AggregationLevel)}>
-        <TabsList className="mb-6">
+        <TabsList className="mb-4">
           <TabsTrigger value="detail">По деталям</TabsTrigger>
           <TabsTrigger value="stage">По этапам</TabsTrigger>
         </TabsList>
 
         <TabsContent value={aggregation}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
               <ResponsiveContainer width="100%" height={350}>
                 <PieChart>

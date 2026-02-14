@@ -21,10 +21,11 @@ export default defineConfig(() => {
     },
     build: {
       rollupOptions: {
+        input: resolve(projectRoot, 'dashboard.html'),
         output: {
-          entryFileNames: 'assets/index.js',
-          chunkFileNames: 'assets/[name].js',
-          assetFileNames: 'assets/[name].[ext]',
+          entryFileNames: 'assets/db-index.js',
+          chunkFileNames: 'assets/db-[name].js',
+          assetFileNames: 'assets/db-[name].[ext]',
           manualChunks: undefined,
         },
         external: [],
