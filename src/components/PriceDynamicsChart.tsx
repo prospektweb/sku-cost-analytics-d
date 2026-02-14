@@ -8,19 +8,17 @@ import { Badge } from '@/components/ui/badge';
 
 interface PriceDynamicsChartProps {
   snapshots: Snapshot[];
-  priceTypeId: number | null;
-  showAllPriceTypes: boolean;
+  selectedPriceTypeIds: number[];
 }
 
 export function PriceDynamicsChart({
   snapshots,
-  priceTypeId,
-  showAllPriceTypes,
+  selectedPriceTypeIds,
 }: PriceDynamicsChartProps) {
   const [hiddenPriceTypes, setHiddenPriceTypes] = useState<Set<number>>(new Set());
 
   const chartData = useMemo(() => {
-    const pricePoints = extractPriceTimeSeries(snapshots, showAllPriceTypes ? null : priceTypeId);
+    const pricePoints = extractPriceTimeSeries(snapshots, selectedPriceTypeIds);
 
     const groupedByTimestamp = new Map<number, Record<string, number | string>>();
 
@@ -43,7 +41,7 @@ export function PriceDynamicsChart({
       const bTime = typeof b.timestamp === 'number' ? b.timestamp : 0;
       return aTime - bTime;
     });
-  }, [snapshots, priceTypeId, showAllPriceTypes]);
+  }, [snapshots, selectedPriceTypeIds]);
 
   const priceTypeKeys = useMemo(() => {
     if (chartData.length === 0) return [];
@@ -150,7 +148,7 @@ export function PriceDynamicsChart({
 
                       const pricePoints = extractPriceTimeSeries(
                         snapshots,
-                        showAllPriceTypes ? null : priceTypeId
+                        selectedPriceTypeIds
                       );
                       const currentPoint = pricePoints.find(
                         (p) =>

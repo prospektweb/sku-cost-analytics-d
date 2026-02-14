@@ -75,7 +75,7 @@ export function formatDate(date: Date): string {
 
 export function extractPriceTimeSeries(
   snapshots: Snapshot[],
-  priceTypeId: number | null
+  selectedPriceTypeIds: number[]
 ): PriceDataPoint[] {
   const dataPoints: PriceDataPoint[] = [];
 
@@ -84,7 +84,8 @@ export function extractPriceTimeSeries(
 
     snapshot.json.priceRangesWithMarkup.forEach((range) => {
       range.prices.forEach((price) => {
-        if (!priceTypeId || price.typeId === priceTypeId) {
+        // If empty array, show nothing. If has values, filter by them
+        if (selectedPriceTypeIds.length === 0 || selectedPriceTypeIds.includes(price.typeId)) {
           dataPoints.push({
             timestamp,
             dateTime: snapshot.dateTime,

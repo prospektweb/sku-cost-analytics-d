@@ -24,13 +24,11 @@ function DashboardContent() {
   const { isInitialized, offerId: storeOfferId } = useDashboardStore();
   
   const [filters, setFilters] = useState<FilterState>({
-    offerId: null,
     offerName: null,
     dateFrom: null,
     dateTo: null,
     presetId: null,
-    priceTypeId: null,
-    showAllPriceTypes: true,
+    selectedPriceTypeIds: [],
   });
 
   const { data: snapshots = [], isLoading, error } = useQuery({
@@ -84,8 +82,7 @@ function DashboardContent() {
             <>
               <PriceDynamicsChart
                 snapshots={snapshots}
-                priceTypeId={filters.priceTypeId}
-                showAllPriceTypes={filters.showAllPriceTypes}
+                selectedPriceTypeIds={filters.selectedPriceTypeIds}
               />
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

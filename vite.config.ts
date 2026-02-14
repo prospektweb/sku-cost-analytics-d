@@ -21,6 +21,7 @@ export default defineConfig(() => {
     },
     build: {
       rollupOptions: {
+        input: resolve(projectRoot, 'dashboard.html'),
         output: {
           entryFileNames: 'assets/db-index.js',
           chunkFileNames: 'assets/db-[name].js',

@@ -10,10 +10,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 import { api } from '@/lib/api';
 import type { FilterState } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
+import { useEffect } from 'react';
 
 interface DashboardFiltersProps {
   filters: FilterState;
@@ -21,20 +23,14 @@ interface DashboardFiltersProps {
 }
 
 export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersProps) {
-  const { data: offers = [] } = useQuery({
-    queryKey: ['offers'],
-    queryFn: () => api.getOffers(),
-  });
-
   const { data: offerNames = [] } = useQuery({
     queryKey: ['offerNames'],
     queryFn: () => api.getOfferNames(),
   });
 
   const { data: presets = [] } = useQuery({
-    queryKey: ['presets', filters.offerId],
-    queryFn: () => api.getPresets(filters.offerId || undefined),
-    enabled: !!filters.offerId,
+    queryKey: ['presets'],
+    queryFn: () => api.getPresets(),
   });
 
   const { data: priceTypes = [] } = useQuery({
@@ -42,188 +38,163 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
     queryFn: () => api.getPriceTypes(),
   });
 
+  // Initialize selectedPriceTypeIds with all price types when data is loaded
+  useEffect(() => {
+    if (priceTypes.length > 0 && filters.selectedPriceTypeIds.length === 0) {
+      onFiltersChange({
+        ...filters,
+        selectedPriceTypeIds: priceTypes.map(pt => pt.id),
+      });
+    }
+  }, [priceTypes, filters, onFiltersChange]);
+
+  const togglePriceType = (typeId: number) => {
+    const newSelected = filters.selectedPriceTypeIds.includes(typeId)
+      ? filters.selectedPriceTypeIds.filter(id => id !== typeId)
+      : [...filters.selectedPriceTypeIds, typeId];
+    
+    onFiltersChange({
+      ...filters,
+      selectedPriceTypeIds: newSelected,
+    });
+  };
+
   return (
-    <Card className="p-6 bg-card">
-      <div className="flex items-center gap-2 mb-6">
-        <FunnelSimple size={20} className="text-primary" />
-        <h2 className="text-lg font-semibold">Фильтры</h2>
-      </div>
+    <Card className="p-3 bg-card">
+      <Collapsible defaultOpen={false}>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full hover:opacity-80">
+          <FunnelSimple size={18} className="text-primary" />
+          <h2 className="text-base font-semibold">Фильтры</h2>
+        </CollapsibleTrigger>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="offer-name">Название предложения</Label>
-          <Select
-            value={filters.offerName || 'all'}
-            onValueChange={(value) =>
-              onFiltersChange({ ...filters, offerName: value === 'all' ? null : value })
-            }
-          >
-            <SelectTrigger id="offer-name">
-              <SelectValue placeholder="Все предложения" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все предложения</SelectItem>
-              {offerNames.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <CollapsibleContent className="mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+            <div className="space-y-1">
+              <Label htmlFor="offer-name" className="text-sm">Название предложения</Label>
+              <Select
+                value={filters.offerName || 'all'}
+                onValueChange={(value) =>
+                  onFiltersChange({ ...filters, offerName: value === 'all' ? null : value })
+                }
+              >
+                <SelectTrigger id="offer-name" className="h-9">
+                  <SelectValue placeholder="Все предложения" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все предложения</SelectItem>
+                  {offerNames.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="offer">ID предложения</Label>
-          <Select
-            value={filters.offerId?.toString() || ''}
-            onValueChange={(value) =>
-              onFiltersChange({ ...filters, offerId: value ? parseInt(value) : null })
-            }
-          >
-            <SelectTrigger id="offer">
-              <SelectValue placeholder="Выберите ТП" />
-            </SelectTrigger>
-            <SelectContent>
-              {offers.map((offer) => (
-                <SelectItem key={offer.id} value={offer.id.toString()}>
-                  {offer.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div className="space-y-1">
+              <Label htmlFor="date-from" className="text-sm">Дата от</Label>
+              <div className="relative">
+                <Input
+                  id="date-from"
+                  type="date"
+                  className="h-9"
+                  value={filters.dateFrom ? formatDateForInput(filters.dateFrom) : ''}
+                  onChange={(e) =>
+                    onFiltersChange({
+                      ...filters,
+                      dateFrom: e.target.value ? new Date(e.target.value) : null,
+                    })
+                  }
+                />
+                <CalendarBlank
+                  size={14}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                />
+              </div>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="date-from">Дата от</Label>
-          <div className="relative">
-            <Input
-              id="date-from"
-              type="date"
-              value={filters.dateFrom ? formatDateForInput(filters.dateFrom) : ''}
-              onChange={(e) =>
-                onFiltersChange({
-                  ...filters,
-                  dateFrom: e.target.value ? new Date(e.target.value) : null,
-                })
-              }
-            />
-            <CalendarBlank
-              size={16}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-            />
+            <div className="space-y-1">
+              <Label htmlFor="date-to" className="text-sm">Дата до</Label>
+              <div className="relative">
+                <Input
+                  id="date-to"
+                  type="date"
+                  className="h-9"
+                  value={filters.dateTo ? formatDateForInput(filters.dateTo) : ''}
+                  onChange={(e) =>
+                    onFiltersChange({
+                      ...filters,
+                      dateTo: e.target.value ? new Date(e.target.value) : null,
+                    })
+                  }
+                />
+                <CalendarBlank
+                  size={14}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="preset" className="text-sm">Пресет</Label>
+              <Select
+                value={filters.presetId?.toString() || 'all'}
+                onValueChange={(value) =>
+                  onFiltersChange({ ...filters, presetId: value === 'all' ? null : parseInt(value) })
+                }
+              >
+                <SelectTrigger id="preset" className="h-9">
+                  <SelectValue placeholder="Все пресеты" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все пресеты</SelectItem>
+                  {presets.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id.toString()}>
+                      {preset.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="date-to">Дата до</Label>
-          <div className="relative">
-            <Input
-              id="date-to"
-              type="date"
-              value={filters.dateTo ? formatDateForInput(filters.dateTo) : ''}
-              onChange={(e) =>
-                onFiltersChange({
-                  ...filters,
-                  dateTo: e.target.value ? new Date(e.target.value) : null,
-                })
-              }
-            />
-            <CalendarBlank
-              size={16}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="preset">Пресет (опционально)</Label>
-          <Select
-            value={filters.presetId?.toString() || 'all'}
-            onValueChange={(value) =>
-              onFiltersChange({ ...filters, presetId: value === 'all' ? null : parseInt(value) })
-            }
-            disabled={!filters.offerId}
-          >
-            <SelectTrigger id="preset">
-              <SelectValue placeholder="Выберите пресет" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все пресеты</SelectItem>
-              {presets.map((preset) => (
-                <SelectItem key={preset.id} value={preset.id.toString()}>
-                  {preset.name}
-                </SelectItem>
+          <div className="pt-3 border-t border-border">
+            <Label className="text-sm mb-2 block">Типы цен</Label>
+            <div className="flex flex-wrap gap-3">
+              {priceTypes.map((priceType) => (
+                <label
+                  key={priceType.id}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={filters.selectedPriceTypeIds.includes(priceType.id)}
+                    onCheckedChange={() => togglePriceType(priceType.id)}
+                  />
+                  <span className="text-sm">{priceType.name}</span>
+                </label>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+            </div>
+          </div>
 
-      <div className="mt-6 pt-6 border-t border-border">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2 flex-1">
-            <Label htmlFor="price-type">Тип цены</Label>
-            <Select
-              value={filters.priceTypeId?.toString() || ''}
-              onValueChange={(value) =>
+          <div className="mt-3 flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
                 onFiltersChange({
-                  ...filters,
-                  priceTypeId: value ? parseInt(value) : null,
-                  showAllPriceTypes: !value,
+                  offerName: null,
+                  dateFrom: null,
+                  dateTo: null,
+                  presetId: null,
+                  selectedPriceTypeIds: priceTypes.map(pt => pt.id),
                 })
               }
-              disabled={filters.showAllPriceTypes}
             >
-              <SelectTrigger id="price-type" className="max-w-xs">
-                <SelectValue placeholder="Выберите тип цены" />
-              </SelectTrigger>
-              <SelectContent>
-                {priceTypes.map((type) => (
-                  <SelectItem key={type.id} value={type.id.toString()}>
-                    {type.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              Сбросить фильтры
+            </Button>
           </div>
-
-          <div className="flex items-center gap-2 ml-6">
-            <Switch
-              id="show-all-prices"
-              checked={filters.showAllPriceTypes}
-              onCheckedChange={(checked) =>
-                onFiltersChange({
-                  ...filters,
-                  showAllPriceTypes: checked,
-                  priceTypeId: checked ? null : filters.priceTypeId,
-                })
-              }
-            />
-            <Label htmlFor="show-all-prices" className="cursor-pointer">
-              Показать все типы цен
-            </Label>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 flex gap-3">
-        <Button
-          variant="outline"
-          onClick={() =>
-            onFiltersChange({
-              offerId: null,
-              offerName: null,
-              dateFrom: null,
-              dateTo: null,
-              presetId: null,
-              priceTypeId: null,
-              showAllPriceTypes: true,
-            })
-          }
-        >
-          Сбросить фильтры
-        </Button>
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
