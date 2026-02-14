@@ -12,8 +12,8 @@ interface StageOutputsProps {
 export function StageOutputs({ snapshot }: StageOutputsProps) {
   if (!snapshot) {
     return (
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-6">
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-3">
           <Info size={20} className="text-primary" />
           <h2 className="text-lg font-semibold">Дополнительная информация</h2>
         </div>
@@ -25,8 +25,8 @@ export function StageOutputs({ snapshot }: StageOutputsProps) {
   }
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center gap-2 mb-6">
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-3">
         <Info size={20} className="text-primary" />
         <h2 className="text-lg font-semibold">Дополнительная информация</h2>
       </div>

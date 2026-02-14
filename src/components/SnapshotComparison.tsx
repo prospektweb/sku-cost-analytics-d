@@ -34,8 +34,8 @@ export function SnapshotComparison({ snapshots }: SnapshotComparisonProps) {
 
   if (snapshots.length < 2) {
     return (
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-6">
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-3">
           <ArrowsLeftRight size={20} className="text-primary" />
           <h2 className="text-lg font-semibold">Временное сравнение</h2>
         </div>
@@ -47,13 +47,13 @@ export function SnapshotComparison({ snapshots }: SnapshotComparisonProps) {
   }
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center gap-2 mb-6">
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-3">
         <ArrowsLeftRight size={20} className="text-primary" />
         <h2 className="text-lg font-semibold">Временное сравнение</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div className="space-y-2">
           <Label htmlFor="snapshot-a">Снимок A (базовый)</Label>
           <Select

@@ -77,8 +77,8 @@ export function PriceDynamicsChart({
 
   if (snapshots.length === 0) {
     return (
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-6">
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-3">
           <ChartLine size={20} className="text-primary" />
           <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
         </div>
@@ -90,13 +90,13 @@ export function PriceDynamicsChart({
   }
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center gap-2 mb-6">
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-3">
         <ChartLine size={20} className="text-primary" />
         <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-3">
         {priceTypeKeys.map((key, index) => {
           const [label, typeIdStr] = key.split('_');
           const typeId = parseInt(typeIdStr);
