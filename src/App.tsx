@@ -7,6 +7,7 @@ import { CostBreakdown } from '@/components/CostBreakdown';
 import { CostTree } from '@/components/CostTree';
 import { SnapshotComparison } from '@/components/SnapshotComparison';
 import { StageOutputs } from '@/components/StageOutputs';
+import { CumulativeOutputsChart } from '@/components/CumulativeOutputsChart';
 import { api } from '@/lib/api';
 import { useDashboardStore } from '@/lib/store';
 import type { FilterState } from '@/lib/types';
@@ -93,6 +94,8 @@ function DashboardContent() {
               <SnapshotComparison snapshots={snapshots} />
 
               <StageOutputs snapshot={latestSnapshot} />
+
+              <CumulativeOutputsChart snapshot={latestSnapshot} />
             </>
           )}
 
