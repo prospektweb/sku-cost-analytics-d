@@ -84,6 +84,7 @@ export interface Snapshot {
 
 export interface FilterState {
   offerId: number | null;
+  offerName?: string | null;
   dateFrom: Date | null;
   dateTo: Date | null;
   presetId: number | null;

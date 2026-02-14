@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface ExportButtonProps {
   snapshots: Snapshot[];
@@ -63,6 +65,79 @@ export function ExportButton({ snapshots }: ExportButtonProps) {
     }
   };
 
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      toast.info('Подготовка PDF, пожалуйста подождите...');
+      
+      // Find the dashboard content container
+      const dashboardElement = document.querySelector('.container') as HTMLElement;
+      if (!dashboardElement) {
+        throw new Error('Dashboard element not found');
+      }
+
+      // Capture the dashboard as canvas
+      const canvas = await html2canvas(dashboardElement, {
+        scale: 2, // Higher quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      // Calculate dimensions for A4 landscape
+      const imgWidth = 297; // A4 landscape width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      let heightLeft = imgHeight;
+      let position = 0;
+      const pageHeight = 210; // A4 landscape height in mm
+
+      // Add first page
+      pdf.addImage(
+        canvas.toDataURL('image/png'),
+        'PNG',
+        0,
+        position,
+        imgWidth,
+        imgHeight
+      );
+      heightLeft -= pageHeight;
+
+      // Add additional pages if content is too long
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(
+          canvas.toDataURL('image/png'),
+          'PNG',
+          0,
+          position,
+          imgWidth,
+          imgHeight
+        );
+        heightLeft -= pageHeight;
+      }
+
+      // Save PDF
+      const timestamp = new Date().toISOString().split('T')[0];
+      pdf.save(`sku-cost-analysis-${timestamp}.pdf`);
+      
+      toast.success('PDF экспортирован успешно');
+    } catch (error) {
+      toast.error('Ошибка при экспорте PDF');
+      console.error(error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (snapshots.length === 0) {
     return null;
   }
@@ -76,6 +151,9 @@ export function ExportButton({ snapshots }: ExportButtonProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleExportPDF}>
+          Экспорт в PDF
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleExportJSON}>
           Экспорт в JSON
         </DropdownMenuItem>
