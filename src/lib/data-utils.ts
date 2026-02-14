@@ -143,14 +143,21 @@ export function getCostBreakdownByStage(snapshot: Snapshot): CostBreakdownItem[]
   const stageMap = new Map<string, { name: string; value: number }>();
 
   snapshot.json.details.forEach((detail) => {
-    detail.stages.forEach((stage) => {
+    detail.stages.forEach((stage, stageIndex) => {
+      // Calculate delta: current cumulative - previous cumulative
+      const currentCumulative = stage.outputs.purchasingPrice || 0;
+      const previousCumulative = stageIndex > 0 
+        ? (detail.stages[stageIndex - 1].outputs.purchasingPrice || 0)
+        : 0;
+      const stageDelta = currentCumulative - previousCumulative;
+
       const existing = stageMap.get(stage.stageId);
       if (existing) {
-        existing.value += stage.totalCost;
+        existing.value += stageDelta;
       } else {
         stageMap.set(stage.stageId, {
           name: stage.stageName,
-          value: stage.totalCost,
+          value: stageDelta,
         });
       }
     });
@@ -162,7 +169,7 @@ export function getCostBreakdownByStage(snapshot: Snapshot): CostBreakdownItem[]
     id,
     name: data.name,
     value: data.value,
-    percentage: (data.value / total) * 100,
+    percentage: total > 0 ? (data.value / total) * 100 : 0,
     color: CHART_COLORS[index % CHART_COLORS.length],
   }));
 }
@@ -182,15 +189,24 @@ export function buildCostTree(snapshot: Snapshot): TreeNode[] {
     weight: detail.weight,
     currency: detail.currency,
     outputs: detail.outputs,
-    children: detail.stages.map((stage) => ({
-      id: stage.stageId,
-      name: stage.stageName,
-      type: 'stage' as const,
-      cost: stage.totalCost,
-      percentage: (stage.totalCost / total) * 100,
-      currency: stage.currency,
-      outputs: stage.outputs,
-    })),
+    children: detail.stages.map((stage, stageIndex) => {
+      // Calculate delta: current cumulative - previous cumulative
+      const currentCumulative = stage.outputs.purchasingPrice || 0;
+      const previousCumulative = stageIndex > 0 
+        ? (detail.stages[stageIndex - 1].outputs.purchasingPrice || 0)
+        : 0;
+      const stageDelta = currentCumulative - previousCumulative;
+
+      return {
+        id: stage.stageId,
+        name: stage.stageName,
+        type: 'stage' as const,
+        cost: stageDelta,
+        percentage: total > 0 ? (stageDelta / total) * 100 : 0,
+        currency: stage.currency,
+        outputs: stage.outputs,
+      };
+    }),
   }));
 }
 
@@ -216,16 +232,30 @@ export function compareSnapshots(
   const stageMapB = new Map<string, number>();
 
   snapshotA.json.details.forEach((detail) => {
-    detail.stages.forEach((stage) => {
+    detail.stages.forEach((stage, stageIndex) => {
+      // Calculate delta: current cumulative - previous cumulative
+      const currentCumulative = stage.outputs.purchasingPrice || 0;
+      const previousCumulative = stageIndex > 0 
+        ? (detail.stages[stageIndex - 1].outputs.purchasingPrice || 0)
+        : 0;
+      const stageDelta = currentCumulative - previousCumulative;
+
       const current = stageMapA.get(stage.stageName) || 0;
-      stageMapA.set(stage.stageName, current + stage.totalCost);
+      stageMapA.set(stage.stageName, current + stageDelta);
     });
   });
 
   snapshotB.json.details.forEach((detail) => {
-    detail.stages.forEach((stage) => {
+    detail.stages.forEach((stage, stageIndex) => {
+      // Calculate delta: current cumulative - previous cumulative
+      const currentCumulative = stage.outputs.purchasingPrice || 0;
+      const previousCumulative = stageIndex > 0 
+        ? (detail.stages[stageIndex - 1].outputs.purchasingPrice || 0)
+        : 0;
+      const stageDelta = currentCumulative - previousCumulative;
+
       const current = stageMapB.get(stage.stageName) || 0;
-      stageMapB.set(stage.stageName, current + stage.totalCost);
+      stageMapB.set(stage.stageName, current + stageDelta);
     });
   });
 
@@ -290,4 +320,31 @@ export function compareSnapshots(
 
 export function getChartColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
+}
+
+export function formatKey(key: string): string {
+  const keyMap: Record<string, string> = {
+    width: 'Ширина (мм)',
+    length: 'Длина (мм)',
+    height: 'Высота (мм)',
+    weight: 'Вес (г)',
+    purchasingPrice: 'Себестоимость',
+    basePrice: 'Отпускная цена',
+    operationPurchasingPrice: 'Себестоимость (операции)',
+    operationBasePrice: 'Отпускная цена (операции)',
+    materialPurchasingPrice: 'Себестоимость (материалы)',
+    materialBasePrice: 'Отпускная цена (материалы)',
+    widthproduct: 'Ширина продукта',
+    lengthproduct: 'Длина продукта',
+    kolichestvo_listov_bumagi_s_priladkoy: 'Кол-во листов с приладкой',
+    kolichestvo_listov_bumagi_bez_priladki: 'Кол-во листов без приладки',
+    vmestimost: 'Вместимость',
+    koeffitsient_svoy_chuzhoy_oborot: 'Коэффициент своя/чужая',
+    kolichestvo_priladok: 'Кол-во приладок',
+    stoimost_priladki_dlya_storony_1: 'Стоимость приладки сторона 1',
+    stoimost_priladki_dlya_storony_2: 'Стоимость приладки сторона 2',
+    summa_po_vsem_priladkam: 'Сумма по всем приладкам',
+  };
+
+  return keyMap[key] || key;
 }

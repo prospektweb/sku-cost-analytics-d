@@ -3,7 +3,8 @@ import { Info } from '@phosphor-icons/react';
 import type { Snapshot } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { formatNumber } from '@/lib/data-utils';
+import { formatNumber, formatKey } from '@/lib/data-utils';
+import { Badge } from '@/components/ui/badge';
 
 interface StageOutputsProps {
   snapshot: Snapshot | null;
@@ -59,18 +60,37 @@ export function StageOutputs({ snapshot }: StageOutputsProps) {
             <AccordionTrigger>{detail.detailName} - Выходы этапов</AccordionTrigger>
             <AccordionContent>
               <div className="space-y-4">
-                {detail.stages.map((stage) => (
+                {detail.stages.map((stage, stageIndex) => (
                   <div key={stage.stageId} className="border border-border rounded-lg p-4">
                     <h4 className="font-semibold mb-3">{stage.stageName}</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {Object.entries(stage.outputs).map(([key, value]) => (
-                        <div key={key} className="space-y-1">
-                          <div className="text-xs text-muted-foreground">{formatKey(key)}</div>
-                          <div className="text-sm font-mono">
-                            {typeof value === 'number' ? formatNumber(value) : value}
+                      {Object.entries(stage.outputs).map(([key, value]) => {
+                        // Calculate delta for numeric values
+                        let delta: number | null = null;
+                        if (typeof value === 'number' && stageIndex > 0) {
+                          const previousValue = detail.stages[stageIndex - 1].outputs[key];
+                          if (typeof previousValue === 'number') {
+                            delta = value - previousValue;
+                          }
+                        }
+
+                        return (
+                          <div key={key} className="space-y-1">
+                            <div className="text-xs text-muted-foreground">{formatKey(key)}</div>
+                            <div className="text-sm font-mono">
+                              {typeof value === 'number' ? formatNumber(value) : value}
+                            </div>
+                            {delta !== null && (
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${delta > 0 ? 'text-green-600' : delta < 0 ? 'text-red-600' : 'text-muted-foreground'}`}
+                              >
+                                {delta > 0 ? '+' : ''}{formatNumber(delta)}
+                              </Badge>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -128,27 +148,4 @@ export function StageOutputs({ snapshot }: StageOutputsProps) {
       </Accordion>
     </Card>
   );
-}
-
-function formatKey(key: string): string {
-  const keyMap: Record<string, string> = {
-    width: 'Ширина (мм)',
-    length: 'Длина (мм)',
-    height: 'Высота (мм)',
-    weight: 'Вес (г)',
-    purchasingPrice: 'Себестоимость',
-    basePrice: 'Отпускная цена',
-    widthproduct: 'Ширина продукта',
-    lengthproduct: 'Длина продукта',
-    kolichestvo_listov_bumagi_s_priladkoy: 'Кол-во листов с приладкой',
-    kolichestvo_listov_bumagi_bez_priladki: 'Кол-во листов без приладки',
-    vmestimost: 'Вместимость',
-    koeffitsient_svoy_chuzhoy_oborot: 'Коэффициент своя/чужая',
-    kolichestvo_priladok: 'Кол-во приладок',
-    stoimost_priladki_dlya_storony_1: 'Стоимость приладки сторона 1',
-    stoimost_priladki_dlya_storony_2: 'Стоимость приладки сторона 2',
-    summa_po_vsem_priladkam: 'Сумма по всем приладкам',
-  };
-
-  return keyMap[key] || key;
 }
