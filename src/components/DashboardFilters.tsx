@@ -111,9 +111,9 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
         <div className="space-y-2">
           <Label htmlFor="preset">Пресет (опционально)</Label>
           <Select
-            value={filters.presetId?.toString() || ''}
+            value={filters.presetId?.toString() || 'all'}
             onValueChange={(value) =>
-              onFiltersChange({ ...filters, presetId: value ? parseInt(value) : null })
+              onFiltersChange({ ...filters, presetId: value === 'all' ? null : parseInt(value) })
             }
             disabled={!filters.offerId}
           >
@@ -121,7 +121,7 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
               <SelectValue placeholder="Выберите пресет" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Все пресеты</SelectItem>
+              <SelectItem value="all">Все пресеты</SelectItem>
               {presets.map((preset) => (
                 <SelectItem key={preset.id} value={preset.id.toString()}>
                   {preset.name}
