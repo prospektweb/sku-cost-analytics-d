@@ -5,6 +5,10 @@ export interface StageOutputs {
   weight?: number;
   purchasingPrice?: number;
   basePrice?: number;
+  operationPurchasingPrice?: number;
+  operationBasePrice?: number;
+  materialPurchasingPrice?: number;
+  materialBasePrice?: number;
   [key: string]: string | number | undefined;
 }
 
@@ -13,9 +17,6 @@ export interface Stage {
   stageName: string;
   timestamp_x: string;
   modified_by: string;
-  operationCost: number;
-  materialCost: number;
-  totalCost: number;
   currency: string;
   outputs: StageOutputs;
 }
