@@ -1,5 +1,5 @@
 import type { Snapshot, FilterState, OfferOption, PresetOption, PriceTypeOption } from './types';
-import { mockSnapshots } from './mock-data';
+import { useDashboardStore } from './store';
 
 const MOCK_DELAY = 300;
 
@@ -9,10 +9,15 @@ export const api = {
   async getSnapshots(filters: FilterState): Promise<Snapshot[]> {
     await delay(MOCK_DELAY);
 
-    let filtered = [...mockSnapshots];
+    const allSnapshots = useDashboardStore.getState().snapshots;
+    let filtered = [...allSnapshots];
 
     if (filters.offerId) {
       filtered = filtered.filter((s) => s.json.offerId === filters.offerId);
+    }
+
+    if (filters.offerName) {
+      filtered = filtered.filter((s) => s.json.offerName === filters.offerName);
     }
 
     if (filters.dateFrom) {
@@ -41,9 +46,10 @@ export const api = {
   async getOffers(): Promise<OfferOption[]> {
     await delay(MOCK_DELAY);
 
+    const allSnapshots = useDashboardStore.getState().snapshots;
     const uniqueOffers = new Map<number, OfferOption>();
 
-    mockSnapshots.forEach((snapshot) => {
+    allSnapshots.forEach((snapshot) => {
       if (!uniqueOffers.has(snapshot.json.offerId)) {
         uniqueOffers.set(snapshot.json.offerId, {
           id: snapshot.json.offerId,
@@ -56,12 +62,26 @@ export const api = {
     return Array.from(uniqueOffers.values());
   },
 
+  async getOfferNames(): Promise<string[]> {
+    await delay(MOCK_DELAY);
+
+    const allSnapshots = useDashboardStore.getState().snapshots;
+    const uniqueNames = new Set<string>();
+
+    allSnapshots.forEach((snapshot) => {
+      uniqueNames.add(snapshot.json.offerName);
+    });
+
+    return Array.from(uniqueNames).sort();
+  },
+
   async getPresets(offerId?: number): Promise<PresetOption[]> {
     await delay(MOCK_DELAY);
 
+    const allSnapshots = useDashboardStore.getState().snapshots;
     const uniquePresets = new Map<number, PresetOption>();
 
-    mockSnapshots
+    allSnapshots
       .filter((s) => !offerId || s.json.offerId === offerId)
       .forEach((snapshot) => {
         if (!uniquePresets.has(snapshot.json.presetId)) {
@@ -78,9 +98,10 @@ export const api = {
   async getPriceTypes(): Promise<PriceTypeOption[]> {
     await delay(MOCK_DELAY);
 
+    const allSnapshots = useDashboardStore.getState().snapshots;
     const uniquePriceTypes = new Map<number, PriceTypeOption>();
 
-    mockSnapshots.forEach((snapshot) => {
+    allSnapshots.forEach((snapshot) => {
       snapshot.json.priceRangesWithMarkup.forEach((range) => {
         range.prices.forEach((price) => {
           if (!uniquePriceTypes.has(price.typeId)) {

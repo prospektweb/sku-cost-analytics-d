@@ -26,6 +26,11 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
     queryFn: () => api.getOffers(),
   });
 
+  const { data: offerNames = [] } = useQuery({
+    queryKey: ['offerNames'],
+    queryFn: () => api.getOfferNames(),
+  });
+
   const { data: presets = [] } = useQuery({
     queryKey: ['presets', filters.offerId],
     queryFn: () => api.getPresets(filters.offerId || undefined),
@@ -46,7 +51,29 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="space-y-2">
-          <Label htmlFor="offer">Торговое предложение</Label>
+          <Label htmlFor="offer-name">Название предложения</Label>
+          <Select
+            value={filters.offerName || 'all'}
+            onValueChange={(value) =>
+              onFiltersChange({ ...filters, offerName: value === 'all' ? null : value })
+            }
+          >
+            <SelectTrigger id="offer-name">
+              <SelectValue placeholder="Все предложения" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все предложения</SelectItem>
+              {offerNames.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="offer">ID предложения</Label>
           <Select
             value={filters.offerId?.toString() || ''}
             onValueChange={(value) =>
@@ -185,6 +212,7 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
           onClick={() =>
             onFiltersChange({
               offerId: null,
+              offerName: null,
               dateFrom: null,
               dateTo: null,
               presetId: null,

@@ -1,25 +1,39 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
-import { defineConfig, PluginOption } from "vite";
-
-import sparkPlugin from "@github/spark/spark-vite-plugin";
-import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
+import { defineConfig } from "vite";
 import { resolve } from 'path'
+import { createIconImportProxy } from './src/lib/vite-phosphor-icon-proxy-plugin'
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    // DO NOT REMOVE
-    createIconImportProxy() as PluginOption,
-    sparkPlugin() as PluginOption,
-  ],
-  resolve: {
-    alias: {
-      '@': resolve(projectRoot, 'src')
+export default defineConfig(() => {
+  return {
+    plugins: [
+      react(),
+      tailwindcss(),
+      createIconImportProxy(),
+    ],
+    resolve: {
+      alias: {
+        '@': resolve(projectRoot, 'src'),
+        '@github/spark': resolve(projectRoot, 'src/lib/spark-stub.ts'),
+      }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          entryFileNames: 'assets/index.js',
+          chunkFileNames: 'assets/[name].js',
+          assetFileNames: 'assets/[name].[ext]',
+          manualChunks: undefined,
+        },
+        external: [],
+      },
+      cssCodeSplit: false,
+      modulePreload: false,
+    },
+    optimizeDeps: {
+      exclude: ['@github/spark']
     }
-  },
+  }
 });

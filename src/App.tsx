@@ -9,6 +9,7 @@ import { SnapshotComparison } from '@/components/SnapshotComparison';
 import { StageOutputs } from '@/components/StageOutputs';
 import { ExportButton } from '@/components/ExportButton';
 import { api } from '@/lib/api';
+import { useDashboardStore } from '@/lib/store';
 import type { FilterState } from '@/lib/types';
 
 const queryClient = new QueryClient({
@@ -21,8 +22,11 @@ const queryClient = new QueryClient({
 });
 
 function DashboardContent() {
+  const { isInitialized, offerId: storeOfferId } = useDashboardStore();
+  
   const [filters, setFilters] = useState<FilterState>({
     offerId: null,
+    offerName: null,
     dateFrom: null,
     dateTo: null,
     presetId: null,
@@ -33,14 +37,29 @@ function DashboardContent() {
   const { data: snapshots = [], isLoading, error } = useQuery({
     queryKey: ['snapshots', filters],
     queryFn: () => api.getSnapshots(filters),
-    enabled: !!filters.offerId,
+    enabled: isInitialized,
   });
 
   const latestSnapshot = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
 
+  // Show waiting state if not initialized
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-pulse rounded-full h-16 w-16 border-4 border-primary border-t-transparent mx-auto" />
+          <p className="text-xl font-medium">Ожидание данных...</p>
+          <p className="text-sm text-muted-foreground">
+            Приложение ожидает получения данных через postMessage
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-8 py-8">
+      <div className="container mx-auto px-8 py-8" data-dashboard-root>
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-semibold tracking-tight" style={{ letterSpacing: '-0.02em' }}>
@@ -49,7 +68,7 @@ function DashboardContent() {
             <ExportButton snapshots={snapshots} />
           </div>
           <p className="text-muted-foreground">
-            Анализ истории расчетов себестоимости и формирования цен торговых предложений
+            Анализ истории расчетов себестоимости и формирования цен торговых предложений (ID: {storeOfferId})
           </p>
         </div>
 
@@ -93,18 +112,7 @@ function DashboardContent() {
             </>
           )}
 
-          {!isLoading && !error && !filters.offerId && (
-            <div className="flex items-center justify-center h-64 bg-card rounded-lg border border-border">
-              <div className="text-center space-y-3">
-                <p className="text-lg font-medium">Начните с выбора торгового предложения</p>
-                <p className="text-sm text-muted-foreground">
-                  Используйте фильтры выше для загрузки данных
-                </p>
-              </div>
-            </div>
-          )}
-
-          {!isLoading && !error && filters.offerId && snapshots.length === 0 && (
+          {!isLoading && !error && snapshots.length === 0 && (
             <div className="flex items-center justify-center h-64 bg-card rounded-lg border border-border">
               <div className="text-center space-y-3">
                 <p className="text-lg font-medium">Данные не найдены</p>
