@@ -5,11 +5,18 @@ export interface StageOutputs {
   weight?: number;
   purchasingPrice?: number;
   basePrice?: number;
-  operationPurchasingPrice?: number;
-  operationBasePrice?: number;
-  materialPurchasingPrice?: number;
-  materialBasePrice?: number;
   [key: string]: string | number | undefined;
+}
+
+export interface StageAdded {
+  material: {
+    purchasingPrice: number;
+    basePrice: number;
+  };
+  operation: {
+    purchasingPrice: number;
+    basePrice: number;
+  };
 }
 
 export interface Stage {
@@ -18,7 +25,8 @@ export interface Stage {
   timestamp_x: string;
   modified_by: string;
   currency: string;
-  outputs: StageOutputs;
+  outputs: StageOutputs;  // cumulative values
+  added: StageAdded;       // what was added at this stage
 }
 
 export interface Detail {

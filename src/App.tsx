@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { useQuery, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { DashboardFilters } from '@/components/DashboardFilters';
+import { SummaryCard } from '@/components/SummaryCard';
+import { CostDynamicsChart } from '@/components/CostDynamicsChart';
 import { PriceDynamicsChart } from '@/components/PriceDynamicsChart';
+import { StageCostFormationChart } from '@/components/StageCostFormationChart';
 import { CostBreakdown } from '@/components/CostBreakdown';
 import { CostTree } from '@/components/CostTree';
+import { PhysicalParametersChart } from '@/components/PhysicalParametersChart';
 import { SnapshotComparison } from '@/components/SnapshotComparison';
 import { StageOutputs } from '@/components/StageOutputs';
-import { CumulativeOutputsChart } from '@/components/CumulativeOutputsChart';
 import { api } from '@/lib/api';
 import { useDashboardStore } from '@/lib/store';
 import type { FilterState } from '@/lib/types';
@@ -59,6 +62,7 @@ function DashboardContent() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="w-full px-4 py-4" data-dashboard-root>
         <div className="space-y-4">
+          {/* 1. Filters */}
           <DashboardFilters filters={filters} onFiltersChange={setFilters} />
 
           {isLoading && (
@@ -81,21 +85,35 @@ function DashboardContent() {
 
           {!isLoading && !error && snapshots.length > 0 && (
             <>
+              {/* 2. Summary Card */}
+              <SummaryCard snapshot={latestSnapshot} />
+
+              {/* 3. Cost Dynamics Chart */}
+              <CostDynamicsChart snapshots={snapshots} />
+
+              {/* 4. Price Dynamics Chart */}
               <PriceDynamicsChart
                 snapshots={snapshots}
                 selectedPriceTypeIds={filters.selectedPriceTypeIds}
               />
 
+              {/* 5. Stage Cost Formation Chart */}
+              <StageCostFormationChart snapshot={latestSnapshot} />
+
+              {/* 6. Cost Breakdown + Cost Tree */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 <CostBreakdown snapshot={latestSnapshot} />
                 <CostTree snapshot={latestSnapshot} />
               </div>
 
+              {/* 7. Physical Parameters Chart */}
+              <PhysicalParametersChart snapshot={latestSnapshot} />
+
+              {/* 8. Snapshot Comparison */}
               <SnapshotComparison snapshots={snapshots} />
 
+              {/* 9. Stage Outputs */}
               <StageOutputs snapshot={latestSnapshot} />
-
-              <CumulativeOutputsChart snapshot={latestSnapshot} />
             </>
           )}
 

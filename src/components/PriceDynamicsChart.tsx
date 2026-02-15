@@ -3,8 +3,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card } from '@/components/ui/card';
 import { ChartLine } from '@phosphor-icons/react';
 import type { Snapshot } from '@/lib/types';
-import { extractPriceTimeSeries, formatCurrency, formatDateTime, formatPercent, getChartColor } from '@/lib/data-utils';
+import { extractPriceTimeSeries, formatCurrency, formatDateTime, formatPercent, getChartColor, parseDateTime } from '@/lib/data-utils';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface PriceDynamicsChartProps {
   snapshots: Snapshot[];
@@ -16,12 +17,68 @@ export function PriceDynamicsChart({
   selectedPriceTypeIds,
 }: PriceDynamicsChartProps) {
   const [hiddenPriceTypes, setHiddenPriceTypes] = useState<Set<number>>(new Set());
+  const [selectedRangeIndex, setSelectedRangeIndex] = useState<number>(0);
 
-  // Memoize price points to avoid recalculating on every tooltip hover
-  const pricePoints = useMemo(() => 
-    extractPriceTimeSeries(snapshots, selectedPriceTypeIds),
-    [snapshots, selectedPriceTypeIds]
-  );
+  // Get available price ranges from the latest snapshot
+  const availableRanges = useMemo(() => {
+    if (snapshots.length === 0) return [];
+    const latestSnapshot = snapshots[snapshots.length - 1];
+    return latestSnapshot.json.priceRangesWithMarkup.map((range, index) => ({
+      index,
+      label: range.quantityTo !== null 
+        ? `${range.quantityFrom}-${range.quantityTo}`
+        : `${range.quantityFrom}+`,
+    }));
+  }, [snapshots]);
+
+  // Extract price time series for the selected range
+  const pricePoints = useMemo(() => {
+    const dataPoints: any[] = [];
+
+    snapshots.forEach((snapshot) => {
+      const timestamp = parseDateTime(snapshot.dateTime);
+      
+      // Use the selected price range
+      const selectedRange = snapshot.json.priceRangesWithMarkup[selectedRangeIndex];
+      if (selectedRange) {
+        selectedRange.prices.forEach((price) => {
+          // If empty array, show nothing. If has values, filter by them
+          if (selectedPriceTypeIds.length === 0 || selectedPriceTypeIds.includes(price.typeId)) {
+            dataPoints.push({
+              timestamp,
+              dateTime: snapshot.dateTime,
+              snapshotId: snapshot.id,
+              priceType: price.typeName,
+              priceTypeId: price.typeId,
+              value: price.basePrice,
+              currency: price.currency,
+            });
+          }
+        });
+      }
+    });
+
+    dataPoints.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    const priceTypeGroups = new Map<number, any[]>();
+    dataPoints.forEach((point) => {
+      if (!priceTypeGroups.has(point.priceTypeId)) {
+        priceTypeGroups.set(point.priceTypeId, []);
+      }
+      priceTypeGroups.get(point.priceTypeId)!.push(point);
+    });
+
+    priceTypeGroups.forEach((points) => {
+      for (let i = 1; i < points.length; i++) {
+        const current = points[i];
+        const previous = points[i - 1];
+        current.delta = current.value - previous.value;
+        current.deltaPercent = ((current.delta / previous.value) * 100);
+      }
+    });
+
+    return dataPoints;
+  }, [snapshots, selectedPriceTypeIds, selectedRangeIndex]);
 
   const chartData = useMemo(() => {
     const groupedByTimestamp = new Map<number, Record<string, number | string>>();
@@ -93,9 +150,29 @@ export function PriceDynamicsChart({
 
   return (
     <Card className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <ChartLine size={20} className="text-primary" />
-        <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <ChartLine size={20} className="text-primary" />
+          <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
+        </div>
+
+        {availableRanges.length > 1 && (
+          <Select 
+            value={selectedRangeIndex.toString()} 
+            onValueChange={(value) => setSelectedRangeIndex(parseInt(value))}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Выберите диапазон" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableRanges.map((range) => (
+                <SelectItem key={range.index} value={range.index.toString()}>
+                  Количество: {range.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">

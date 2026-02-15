@@ -146,21 +146,19 @@ export function getCostBreakdownByStage(snapshot: Snapshot): CostBreakdownItem[]
   const stageMap = new Map<string, { name: string; value: number }>();
 
   snapshot.json.details.forEach((detail) => {
-    detail.stages.forEach((stage, stageIndex) => {
-      // Calculate delta: current cumulative - previous cumulative
-      const currentCumulative = stage.outputs.purchasingPrice || 0;
-      const previousCumulative = stageIndex > 0 
-        ? (detail.stages[stageIndex - 1].outputs.purchasingPrice || 0)
-        : 0;
-      const stageDelta = currentCumulative - previousCumulative;
+    detail.stages.forEach((stage) => {
+      // Use added data to calculate stage cost contribution
+      const stageCost = 
+        (stage.added?.material?.purchasingPrice || 0) + 
+        (stage.added?.operation?.purchasingPrice || 0);
 
       const existing = stageMap.get(stage.stageId);
       if (existing) {
-        existing.value += stageDelta;
+        existing.value += stageCost;
       } else {
         stageMap.set(stage.stageId, {
           name: stage.stageName,
-          value: stageDelta,
+          value: stageCost,
         });
       }
     });
@@ -192,20 +190,18 @@ export function buildCostTree(snapshot: Snapshot): TreeNode[] {
     weight: detail.weight,
     currency: detail.currency,
     outputs: detail.outputs,
-    children: detail.stages.map((stage, stageIndex) => {
-      // Calculate delta: current cumulative - previous cumulative
-      const currentCumulative = stage.outputs.purchasingPrice || 0;
-      const previousCumulative = stageIndex > 0 
-        ? (detail.stages[stageIndex - 1].outputs.purchasingPrice || 0)
-        : 0;
-      const stageDelta = currentCumulative - previousCumulative;
+    children: detail.stages.map((stage) => {
+      // Use added data to calculate stage cost
+      const stageCost = 
+        (stage.added?.material?.purchasingPrice || 0) + 
+        (stage.added?.operation?.purchasingPrice || 0);
 
       return {
         id: stage.stageId,
         name: stage.stageName,
         type: 'stage' as const,
-        cost: stageDelta,
-        percentage: total > 0 ? (stageDelta / total) * 100 : 0,
+        cost: stageCost,
+        percentage: total > 0 ? (stageCost / total) * 100 : 0,
         currency: stage.currency,
         outputs: stage.outputs,
       };
@@ -230,35 +226,64 @@ export function compareSnapshots(
     currency: snapshotB.json.currency,
   };
 
+  // Add direct purchase price and overhead comparisons
   const stageDeltas: ComparisonDelta[] = [];
+  
+  // Compare direct purchase prices
+  const oldDirectPrice = snapshotA.json.directPurchasePrice;
+  const newDirectPrice = snapshotB.json.directPurchasePrice;
+  
+  if (oldDirectPrice !== newDirectPrice) {
+    stageDeltas.push({
+      field: 'directPurchasePrice',
+      label: 'Себестоимость (закупочная)',
+      oldValue: oldDirectPrice,
+      newValue: newDirectPrice,
+      delta: newDirectPrice - oldDirectPrice,
+      deltaPercent: oldDirectPrice > 0 ? ((newDirectPrice - oldDirectPrice) / oldDirectPrice) * 100 : 0,
+      currency: snapshotB.json.currency,
+    });
+  }
+
+  // Compare overhead percentages
+  const oldOverheadPercent = oldDirectPrice > 0 ? ((oldTotal - oldDirectPrice) / oldDirectPrice) * 100 : 0;
+  const newOverheadPercent = newDirectPrice > 0 ? ((newTotal - newDirectPrice) / newDirectPrice) * 100 : 0;
+  
+  if (oldOverheadPercent !== newOverheadPercent) {
+    stageDeltas.push({
+      field: 'overheadPercent',
+      label: 'Накладные расходы (%)',
+      oldValue: oldOverheadPercent,
+      newValue: newOverheadPercent,
+      delta: newOverheadPercent - oldOverheadPercent,
+      deltaPercent: oldOverheadPercent > 0 ? ((newOverheadPercent - oldOverheadPercent) / oldOverheadPercent) * 100 : 0,
+      currency: '%',
+    });
+  }
+
+  // Compare stage costs using added data
   const stageMapA = new Map<string, number>();
   const stageMapB = new Map<string, number>();
 
   snapshotA.json.details.forEach((detail) => {
-    detail.stages.forEach((stage, stageIndex) => {
-      // Calculate delta: current cumulative - previous cumulative
-      const currentCumulative = stage.outputs.purchasingPrice || 0;
-      const previousCumulative = stageIndex > 0 
-        ? (detail.stages[stageIndex - 1].outputs.purchasingPrice || 0)
-        : 0;
-      const stageDelta = currentCumulative - previousCumulative;
-
+    detail.stages.forEach((stage) => {
+      const stageCost = 
+        (stage.added?.material?.purchasingPrice || 0) + 
+        (stage.added?.operation?.purchasingPrice || 0);
+      
       const current = stageMapA.get(stage.stageName) || 0;
-      stageMapA.set(stage.stageName, current + stageDelta);
+      stageMapA.set(stage.stageName, current + stageCost);
     });
   });
 
   snapshotB.json.details.forEach((detail) => {
-    detail.stages.forEach((stage, stageIndex) => {
-      // Calculate delta: current cumulative - previous cumulative
-      const currentCumulative = stage.outputs.purchasingPrice || 0;
-      const previousCumulative = stageIndex > 0 
-        ? (detail.stages[stageIndex - 1].outputs.purchasingPrice || 0)
-        : 0;
-      const stageDelta = currentCumulative - previousCumulative;
-
+    detail.stages.forEach((stage) => {
+      const stageCost = 
+        (stage.added?.material?.purchasingPrice || 0) + 
+        (stage.added?.operation?.purchasingPrice || 0);
+      
       const current = stageMapB.get(stage.stageName) || 0;
-      stageMapB.set(stage.stageName, current + stageDelta);
+      stageMapB.set(stage.stageName, current + stageCost);
     });
   });
 
@@ -333,10 +358,6 @@ export function formatKey(key: string): string {
     weight: 'Вес (г)',
     purchasingPrice: 'Себестоимость',
     basePrice: 'Отпускная цена',
-    operationPurchasingPrice: 'Себестоимость (операции)',
-    operationBasePrice: 'Отпускная цена (операции)',
-    materialPurchasingPrice: 'Себестоимость (материалы)',
-    materialBasePrice: 'Отпускная цена (материалы)',
     widthproduct: 'Ширина продукта',
     lengthproduct: 'Длина продукта',
     kolichestvo_listov_bumagi_s_priladkoy: 'Кол-во листов с приладкой',
