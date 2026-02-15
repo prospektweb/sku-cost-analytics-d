@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { ChartBar } from '@phosphor-icons/react';
@@ -15,6 +15,13 @@ interface StageCostFormationChartProps {
 export function StageCostFormationChart({ snapshot }: StageCostFormationChartProps) {
   const [selectedDetailId, setSelectedDetailId] = useState<string>('');
 
+  // Initialize selected detail when snapshot changes
+  useEffect(() => {
+    if (snapshot && snapshot.json.details.length > 0 && !selectedDetailId) {
+      setSelectedDetailId(snapshot.json.details[0].detailId);
+    }
+  }, [snapshot, selectedDetailId]);
+
   if (!snapshot) {
     return (
       <Card className="p-4">
@@ -27,11 +34,6 @@ export function StageCostFormationChart({ snapshot }: StageCostFormationChartPro
         </div>
       </Card>
     );
-  }
-
-  // Set initial selected detail
-  if (!selectedDetailId && snapshot.json.details.length > 0) {
-    setSelectedDetailId(snapshot.json.details[0].detailId);
   }
 
   const selectedDetail = snapshot.json.details.find(d => d.detailId === selectedDetailId);

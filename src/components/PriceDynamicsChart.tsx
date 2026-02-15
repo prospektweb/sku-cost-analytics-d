@@ -38,8 +38,10 @@ export function PriceDynamicsChart({
     snapshots.forEach((snapshot) => {
       const timestamp = parseDateTime(snapshot.dateTime);
       
-      // Use the selected price range
-      const selectedRange = snapshot.json.priceRangesWithMarkup[selectedRangeIndex];
+      // Use the selected price range, fallback to first range if selected doesn't exist
+      const selectedRange = snapshot.json.priceRangesWithMarkup[selectedRangeIndex] 
+        || snapshot.json.priceRangesWithMarkup[0];
+      
       if (selectedRange) {
         selectedRange.prices.forEach((price) => {
           // If empty array, show nothing. If has values, filter by them

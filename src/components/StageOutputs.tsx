@@ -10,6 +10,9 @@ interface StageOutputsProps {
   snapshot: Snapshot | null;
 }
 
+// Keys to exclude from the cumulative outputs display
+const EXCLUDED_OUTPUT_KEYS = ['purchasingPrice', 'basePrice'];
+
 export function StageOutputs({ snapshot }: StageOutputsProps) {
   if (!snapshot) {
     return (
@@ -115,7 +118,7 @@ export function StageOutputs({ snapshot }: StageOutputsProps) {
                       <h5 className="text-sm font-medium text-muted-foreground mb-2">Кумулятивные значения:</h5>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {Object.entries(stage.outputs)
-                          .filter(([key]) => key !== 'purchasingPrice' && key !== 'basePrice')
+                          .filter(([key]) => !EXCLUDED_OUTPUT_KEYS.includes(key))
                           .map(([key, value]) => (
                             <div key={key} className="space-y-1">
                               <div className="text-xs text-muted-foreground">{formatKey(key)}</div>
