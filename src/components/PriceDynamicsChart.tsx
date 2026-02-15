@@ -17,9 +17,13 @@ export function PriceDynamicsChart({
 }: PriceDynamicsChartProps) {
   const [hiddenPriceTypes, setHiddenPriceTypes] = useState<Set<number>>(new Set());
 
-  const chartData = useMemo(() => {
-    const pricePoints = extractPriceTimeSeries(snapshots, selectedPriceTypeIds);
+  // Memoize price points to avoid recalculating on every tooltip hover
+  const pricePoints = useMemo(() => 
+    extractPriceTimeSeries(snapshots, selectedPriceTypeIds),
+    [snapshots, selectedPriceTypeIds]
+  );
 
+  const chartData = useMemo(() => {
     const groupedByTimestamp = new Map<number, Record<string, number | string>>();
 
     pricePoints.forEach((point) => {
@@ -41,7 +45,7 @@ export function PriceDynamicsChart({
       const bTime = typeof b.timestamp === 'number' ? b.timestamp : 0;
       return aTime - bTime;
     });
-  }, [snapshots, selectedPriceTypeIds]);
+  }, [pricePoints]);
 
   const priceTypeKeys = useMemo(() => {
     if (chartData.length === 0) return [];
@@ -146,10 +150,7 @@ export function PriceDynamicsChart({
                       const [label] = (entry.dataKey as string).split('_');
                       const value = entry.value as number;
 
-                      const pricePoints = extractPriceTimeSeries(
-                        snapshots,
-                        selectedPriceTypeIds
-                      );
+                      // Use memoized pricePoints instead of recalculating
                       const currentPoint = pricePoints.find(
                         (p) =>
                           formatDateTime(p.timestamp) === data.dateTime &&

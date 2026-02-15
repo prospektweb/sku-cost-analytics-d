@@ -82,8 +82,10 @@ export function extractPriceTimeSeries(
   snapshots.forEach((snapshot) => {
     const timestamp = parseDateTime(snapshot.dateTime);
 
-    snapshot.json.priceRangesWithMarkup.forEach((range) => {
-      range.prices.forEach((price) => {
+    // Only use the primary (first) price range to avoid mixing deltas from different quantity ranges
+    const primaryRange = snapshot.json.priceRangesWithMarkup[0];
+    if (primaryRange) {
+      primaryRange.prices.forEach((price) => {
         // If empty array, show nothing. If has values, filter by them
         if (selectedPriceTypeIds.length === 0 || selectedPriceTypeIds.includes(price.typeId)) {
           dataPoints.push({
@@ -97,7 +99,7 @@ export function extractPriceTimeSeries(
           });
         }
       });
-    });
+    }
   });
 
   dataPoints.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
