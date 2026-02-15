@@ -83,6 +83,7 @@ export function extractPriceTimeSeries(
     const timestamp = parseDateTime(snapshot.dateTime);
 
     // Only use the primary (first) price range to avoid mixing deltas from different quantity ranges
+    // If no price ranges exist for this snapshot, skip it (no data points will be added)
     const primaryRange = snapshot.json.priceRangesWithMarkup[0];
     if (primaryRange) {
       primaryRange.prices.forEach((price) => {
