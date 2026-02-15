@@ -3,12 +3,15 @@ import { Info } from '@phosphor-icons/react';
 import type { Snapshot } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { formatNumber, formatKey } from '@/lib/data-utils';
+import { formatNumber, formatKey, formatCurrency } from '@/lib/data-utils';
 import { Badge } from '@/components/ui/badge';
 
 interface StageOutputsProps {
   snapshot: Snapshot | null;
 }
+
+// Keys to exclude from the cumulative outputs display
+const EXCLUDED_OUTPUT_KEYS = ['purchasingPrice', 'basePrice'];
 
 export function StageOutputs({ snapshot }: StageOutputsProps) {
   if (!snapshot) {
@@ -60,37 +63,87 @@ export function StageOutputs({ snapshot }: StageOutputsProps) {
             <AccordionTrigger>{detail.detailName} - Выходы этапов</AccordionTrigger>
             <AccordionContent>
               <div className="space-y-4">
-                {detail.stages.map((stage, stageIndex) => (
+                {detail.stages.map((stage) => (
                   <div key={stage.stageId} className="border border-border rounded-lg p-4">
                     <h4 className="font-semibold mb-3">{stage.stageName}</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {Object.entries(stage.outputs).map(([key, value]) => {
-                        // Calculate delta for numeric values
-                        let delta: number | null = null;
-                        if (typeof value === 'number' && stageIndex > 0) {
-                          const previousValue = detail.stages[stageIndex - 1].outputs[key];
-                          if (typeof previousValue === 'number') {
-                            delta = value - previousValue;
-                          }
-                        }
-
-                        return (
-                          <div key={key} className="space-y-1">
-                            <div className="text-xs text-muted-foreground">{formatKey(key)}</div>
-                            <div className="text-sm font-mono">
-                              {typeof value === 'number' ? formatNumber(value) : value}
+                    
+                    {/* Added costs section */}
+                    {stage.added && (
+                      <div className="mb-4 bg-muted/20 rounded-lg p-3">
+                        <h5 className="text-sm font-medium text-muted-foreground mb-2">Добавлено на этапе:</h5>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-1">Материалы</div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>Закупочная:</span>
+                                <span className="font-mono">{formatCurrency(stage.added.material.purchasingPrice, stage.currency)}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>Базовая:</span>
+                                <span className="font-mono">{formatCurrency(stage.added.material.basePrice, stage.currency)}</span>
+                              </div>
                             </div>
-                            {delta !== null && (
-                              <Badge 
-                                variant="outline" 
-                                className={`text-xs ${delta > 0 ? 'text-green-600' : delta < 0 ? 'text-red-600' : 'text-muted-foreground'}`}
-                              >
-                                {delta > 0 ? '+' : ''}{formatNumber(delta)}
-                              </Badge>
-                            )}
                           </div>
-                        );
-                      })}
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-1">Операции</div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>Закупочная:</span>
+                                <span className="font-mono">{formatCurrency(stage.added.operation.purchasingPrice, stage.currency)}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>Базовая:</span>
+                                <span className="font-mono">{formatCurrency(stage.added.operation.basePrice, stage.currency)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <div className="flex justify-between text-sm font-semibold">
+                            <span>Итого добавлено (закуп):</span>
+                            <span className="font-mono">
+                              {formatCurrency(
+                                stage.added.material.purchasingPrice + stage.added.operation.purchasingPrice,
+                                stage.currency
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cumulative outputs section */}
+                    <div>
+                      <h5 className="text-sm font-medium text-muted-foreground mb-2">Кумулятивные значения:</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {Object.entries(stage.outputs)
+                          .filter(([key]) => !EXCLUDED_OUTPUT_KEYS.includes(key))
+                          .map(([key, value]) => (
+                            <div key={key} className="space-y-1">
+                              <div className="text-xs text-muted-foreground">{formatKey(key)}</div>
+                              <div className="text-sm font-mono">
+                                {typeof value === 'number' ? formatNumber(value) : value}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                      
+                      {/* Show cumulative prices prominently */}
+                      <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Нарастающая закупочная</div>
+                          <div className="text-lg font-mono font-semibold">
+                            {formatCurrency(stage.outputs.purchasingPrice || 0, stage.currency)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Нарастающая базовая</div>
+                          <div className="text-lg font-mono font-semibold">
+                            {formatCurrency(stage.outputs.basePrice || 0, stage.currency)}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
