@@ -9,14 +9,26 @@ export interface StageOutputs {
 }
 
 export interface StageAdded {
-  material: {
+  material?: {
+    name?: string;
     purchasingPrice: number;
     basePrice: number;
   };
-  operation: {
+  operation?: {
+    name?: string;
     purchasingPrice: number;
     basePrice: number;
   };
+  equipment?: {
+    name?: string;
+    purchasingPrice?: number;
+    basePrice?: number;
+  };
+}
+
+export interface StageReferenceValue {
+  name: string;
+  value: string;
 }
 
 export interface Stage {
@@ -27,6 +39,7 @@ export interface Stage {
   currency: string;
   outputs: StageOutputs;  // cumulative values
   added: StageAdded;       // what was added at this stage
+  reference?: StageReferenceValue[];
 }
 
 export interface Detail {
