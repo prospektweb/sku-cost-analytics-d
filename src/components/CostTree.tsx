@@ -16,14 +16,15 @@ export type CostTreeMode = 'direct' | 'cost' | 'sales';
 
 interface CostTreeProps {
   snapshot: Snapshot | null;
+  previousSnapshot?: Snapshot | null;
   mode: CostTreeMode;
 }
 
 interface ValueMetrics {
   addedCost: number;
-  price: number;
-  percentChange: number;
-  deltaAmount: number;
+  stageCost: number;
+  relativeChange: number;
+  absoluteChange: number;
 }
 
 const modeMeta: Record<CostTreeMode, { title: string; hint?: string }> = {
@@ -40,10 +41,11 @@ const modeMeta: Record<CostTreeMode, { title: string; hint?: string }> = {
   },
 };
 
-export function CostTree({ snapshot, mode }: CostTreeProps) {
+export function CostTree({ snapshot, previousSnapshot, mode }: CostTreeProps) {
   const [selectedPriceTypeId, setSelectedPriceTypeId] = useState<string>('');
 
   const firstRange = snapshot?.json.priceRangesWithMarkup[0];
+  const previousFirstRange = previousSnapshot?.json.priceRangesWithMarkup[0];
 
   const selectedPrice = useMemo(() => {
     if (!firstRange?.prices.length) return null;
@@ -51,10 +53,20 @@ export function CostTree({ snapshot, mode }: CostTreeProps) {
     return fromSelector || firstRange.prices[0];
   }, [firstRange, selectedPriceTypeId]);
 
+  const selectedPreviousPrice = useMemo(() => {
+    if (!previousFirstRange?.prices.length || !selectedPrice) return null;
+    return previousFirstRange.prices.find((item) => item.typeId === selectedPrice.typeId) || null;
+  }, [previousFirstRange, selectedPrice]);
+
   const markupMultiplier = useMemo(() => {
     if (!snapshot || !selectedPrice || snapshot.json.purchasePrice <= 0) return 1;
     return selectedPrice.basePrice / snapshot.json.purchasePrice;
   }, [snapshot, selectedPrice]);
+
+  const previousMarkupMultiplier = useMemo(() => {
+    if (!previousSnapshot || !selectedPreviousPrice || previousSnapshot.json.purchasePrice <= 0) return 1;
+    return selectedPreviousPrice.basePrice / previousSnapshot.json.purchasePrice;
+  }, [previousSnapshot, selectedPreviousPrice]);
 
   if (!snapshot) {
     return (
@@ -105,15 +117,23 @@ export function CostTree({ snapshot, mode }: CostTreeProps) {
       </div>
 
       <Accordion type="multiple" className="w-full space-y-2">
-        {snapshot.json.details.map((detail) => (
-          <DetailNode
-            key={detail.detailId}
-            detail={detail}
-            snapshot={snapshot}
-            mode={mode}
-            markupMultiplier={markupMultiplier}
-          />
-        ))}
+        {snapshot.json.details.map((detail) => {
+          const previousDetail = previousSnapshot
+            ? previousSnapshot.json.details.find((d) => d.detailId === detail.detailId || d.detailName === detail.detailName)
+            : undefined;
+
+          return (
+            <DetailNode
+              key={detail.detailId}
+              detail={detail}
+              previousDetail={previousDetail}
+              snapshot={snapshot}
+              mode={mode}
+              markupMultiplier={markupMultiplier}
+              previousMarkupMultiplier={previousMarkupMultiplier}
+            />
+          );
+        })}
       </Accordion>
     </Card>
   );
@@ -121,53 +141,62 @@ export function CostTree({ snapshot, mode }: CostTreeProps) {
 
 function DetailNode({
   detail,
+  previousDetail,
   snapshot,
   mode,
   markupMultiplier,
+  previousMarkupMultiplier,
 }: {
   detail: Detail;
+  previousDetail?: Detail;
   snapshot: Snapshot;
   mode: CostTreeMode;
   markupMultiplier: number;
+  previousMarkupMultiplier: number;
 }) {
   const detailPrice = getDetailPrice(detail, mode, markupMultiplier);
-  const metrics = buildMetrics(detailPrice, 0, detailPrice);
+  const previousDetailPrice = previousDetail
+    ? getDetailPrice(previousDetail, mode, previousMarkupMultiplier)
+    : null;
+  const metrics = buildMetrics(detailPrice, detailPrice, previousDetailPrice);
 
   return (
     <AccordionItem value={`detail-${detail.detailId}`} className="border rounded-md px-3">
       <AccordionTrigger>
-        <NodeHeader
-          name={detail.detailName}
-          label="Деталь"
-          metrics={metrics}
-          currency={snapshot.json.currency}
-        />
+        <NodeHeader name={detail.detailName} subtitle="Деталь" metrics={metrics} currency={snapshot.json.currency} />
       </AccordionTrigger>
       <AccordionContent>
         <Accordion type="multiple" className="space-y-2">
-          {detail.stages.map((stage, index) => {
-            const previousPrice = index === 0 ? 0 : getStageCumulativePrice(detail.stages[index - 1], mode, markupMultiplier);
+          {detail.stages.map((stage) => {
+            const previousStage = previousDetail?.stages.find(
+              (s) => s.stageId === stage.stageId || s.stageName === stage.stageName,
+            );
+
             const stagePrice = getStageCumulativePrice(stage, mode, markupMultiplier);
             const stageAdded = getStageAddedPrice(stage, mode, markupMultiplier);
-            const stageMetrics = buildMetrics(stageAdded, previousPrice, stagePrice);
+            const previousStagePrice = previousStage
+              ? getStageCumulativePrice(previousStage, mode, previousMarkupMultiplier)
+              : null;
+
+            const stageMetrics = buildMetrics(stageAdded, stagePrice, previousStagePrice);
 
             return (
-              <AccordionItem key={stage.stageId} value={`stage-${detail.detailId}-${stage.stageId}`} className="border rounded-md px-3">
+              <AccordionItem
+                key={stage.stageId}
+                value={`stage-${detail.detailId}-${stage.stageId}`}
+                className="border rounded-md px-3"
+              >
                 <AccordionTrigger>
-                  <NodeHeader
-                    name={stage.stageName}
-                    label="Этап"
-                    metrics={stageMetrics}
-                    currency={stage.currency}
-                  />
+                  <NodeHeader name={stage.stageName} subtitle="Этап" metrics={stageMetrics} currency={stage.currency} />
                 </AccordionTrigger>
                 <AccordionContent>
                   <StageSections
                     stage={stage}
-                    metrics={stageMetrics}
+                    previousStage={previousStage}
                     currency={stage.currency}
                     mode={mode}
                     markupMultiplier={markupMultiplier}
+                    previousMarkupMultiplier={previousMarkupMultiplier}
                   />
                 </AccordionContent>
               </AccordionItem>
@@ -181,36 +210,44 @@ function DetailNode({
 
 function StageSections({
   stage,
+  previousStage,
   currency,
   mode,
   markupMultiplier,
+  previousMarkupMultiplier,
 }: {
   stage: Stage;
-  metrics: ValueMetrics;
+  previousStage?: Stage;
   currency: string;
   mode: CostTreeMode;
   markupMultiplier: number;
+  previousMarkupMultiplier: number;
 }) {
   const materialCost = getAddedValue(stage.added.material, mode, markupMultiplier);
+  const previousMaterialCost = getAddedValue(previousStage?.added?.material, mode, previousMarkupMultiplier);
+
   const operationCost = getAddedValue(stage.added.operation, mode, markupMultiplier);
+  const previousOperationCost = getAddedValue(previousStage?.added?.operation, mode, previousMarkupMultiplier);
+
   const equipmentCost = getAddedValue(stage.added.equipment, mode, markupMultiplier);
+  const previousEquipmentCost = getAddedValue(previousStage?.added?.equipment, mode, previousMarkupMultiplier);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <NodeLine
         title={`Материал: ${stage.added.material?.name || '—'}`}
-        metrics={buildMetrics(materialCost, 0, materialCost)}
+        metrics={buildMetrics(materialCost, materialCost, previousMaterialCost || null)}
         currency={currency}
       />
       <NodeLine
         title={`Операция: ${stage.added.operation?.name || '—'}`}
-        metrics={buildMetrics(operationCost, 0, operationCost)}
+        metrics={buildMetrics(operationCost, operationCost, previousOperationCost || null)}
         currency={currency}
       />
       {stage.added.equipment?.name ? (
         <NodeLine
           title={`Техника: ${stage.added.equipment.name}`}
-          metrics={buildMetrics(equipmentCost, 0, equipmentCost)}
+          metrics={buildMetrics(equipmentCost, equipmentCost, previousEquipmentCost || null)}
           currency={currency}
         />
       ) : null}
@@ -235,7 +272,10 @@ function StageSections({
           <AccordionContent>
             <div className="space-y-2">
               {(stage.reference || []).map((ref, idx) => (
-                <div key={`${ref.name}-${idx}`} className="text-sm flex items-center justify-between border rounded px-2 py-1">
+                <div
+                  key={`${ref.name}-${idx}`}
+                  className="text-sm flex items-center justify-between border rounded px-2 py-1"
+                >
                   <span className="text-muted-foreground">{ref.name}</span>
                   <span className="font-mono">{ref.value}</span>
                 </div>
@@ -251,19 +291,19 @@ function StageSections({
 
 function NodeHeader({
   name,
-  label,
+  subtitle,
   metrics,
   currency,
 }: {
   name: string;
-  label: string;
+  subtitle: string;
   metrics: ValueMetrics;
   currency: string;
 }) {
   return (
     <div className="w-full pr-3">
       <div className="text-sm font-medium">{name}</div>
-      <div className="text-xs text-muted-foreground mb-1">{label}</div>
+      <div className="text-xs text-muted-foreground mb-1">{subtitle}</div>
       <MetricRow metrics={metrics} currency={currency} />
     </div>
   );
@@ -280,23 +320,26 @@ function NodeLine({ title, metrics, currency }: { title: string; metrics: ValueM
 
 function MetricRow({ metrics, currency }: { metrics: ValueMetrics; currency: string }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
-      <div>+добавленная стоимость: <span className="font-mono">{formatCurrency(metrics.addedCost, currency)}</span></div>
-      <div>+цена: <span className="font-mono">{formatCurrency(metrics.price, currency)}</span></div>
-      <div>+процент изменения цены: <span className="font-mono">{formatNumber(metrics.percentChange)}%</span></div>
-      <div>+сумма изменения цены: <span className="font-mono">{formatCurrency(metrics.deltaAmount, currency)}</span></div>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <span title="Добавленная стоимость" className="font-mono">{formatCurrency(metrics.addedCost, currency)}</span>
+      <span title="Стоимость материалов/операций на текущем этапе" className="font-mono">{formatCurrency(metrics.stageCost, currency)}</span>
+      <span title="Относительный показатель изменения стоимости" className="font-mono">{formatNumber(metrics.relativeChange)}%</span>
+      <span title="Абсолютный показатель изменения стоимости" className="font-mono">{formatCurrency(metrics.absoluteChange, currency)}</span>
     </div>
   );
 }
 
-function buildMetrics(addedCost: number, previousPrice: number, currentPrice: number): ValueMetrics {
-  const deltaAmount = currentPrice - previousPrice;
-  const percentChange = previousPrice > 0 ? (deltaAmount / previousPrice) * 100 : 0;
+function buildMetrics(addedCost: number, stageCost: number, previousComparable: number | null): ValueMetrics {
+  const absoluteChange = previousComparable === null ? 0 : stageCost - previousComparable;
+  const relativeChange = previousComparable && previousComparable !== 0
+    ? (absoluteChange / previousComparable) * 100
+    : 0;
+
   return {
     addedCost,
-    price: currentPrice,
-    percentChange,
-    deltaAmount,
+    stageCost,
+    relativeChange,
+    absoluteChange,
   };
 }
 

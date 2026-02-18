@@ -47,6 +47,7 @@ function DashboardContent() {
   });
 
   const latestSnapshot = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
+  const previousSnapshot = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
 
   if (!isInitialized) {
     return (
@@ -115,7 +116,7 @@ function DashboardContent() {
                   <StageCostFormationChart snapshot={latestSnapshot} />
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     <CostBreakdown snapshot={latestSnapshot} />
-                    <CostTree snapshot={latestSnapshot} mode="direct" />
+                    <CostTree snapshot={latestSnapshot} previousSnapshot={previousSnapshot} mode="direct" />
                   </div>
                 </>
               )}
@@ -123,14 +124,14 @@ function DashboardContent() {
               {reportType === 'cost' && (
                 <>
                   <PhysicalParametersChart snapshot={latestSnapshot} />
-                  <CostTree snapshot={latestSnapshot} mode="cost" />
+                  <CostTree snapshot={latestSnapshot} previousSnapshot={previousSnapshot} mode="cost" />
                 </>
               )}
 
               {reportType === 'sales' && (
                 <>
                   <PriceDynamicsChart snapshots={snapshots} selectedPriceTypeIds={filters.selectedPriceTypeIds} />
-                  <CostTree snapshot={latestSnapshot} mode="sales" />
+                  <CostTree snapshot={latestSnapshot} previousSnapshot={previousSnapshot} mode="sales" />
                 </>
               )}
             </>
