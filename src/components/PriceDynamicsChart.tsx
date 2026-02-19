@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card } from '@/components/ui/card';
 import { ChartLine } from '@phosphor-icons/react';
 import type { Snapshot } from '@/lib/types';
-import { extractPriceTimeSeries, formatCurrency, formatDateTime, formatPercent, getChartColor, parseDateTime } from '@/lib/data-utils';
+import { formatCurrency, formatDateTime, formatPercent, parseDateTime } from '@/lib/data-utils';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -12,142 +12,67 @@ interface PriceDynamicsChartProps {
   selectedPriceTypeIds: number[];
 }
 
-export function PriceDynamicsChart({
-  snapshots,
-  selectedPriceTypeIds,
-}: PriceDynamicsChartProps) {
+const BASE_COLORS = ['oklch(0.60 0.15 280)', 'oklch(0.72 0.19 90)', 'oklch(0.65 0.22 25)', 'oklch(0.55 0.18 200)'];
+
+export function PriceDynamicsChart({ snapshots, selectedPriceTypeIds }: PriceDynamicsChartProps) {
   const [hiddenPriceTypes, setHiddenPriceTypes] = useState<Set<number>>(new Set());
   const [selectedRangeIndex, setSelectedRangeIndex] = useState<number>(0);
 
-  // Get available price ranges from the latest snapshot
   const availableRanges = useMemo(() => {
     if (snapshots.length === 0) return [];
     const latestSnapshot = snapshots[snapshots.length - 1];
     return latestSnapshot.json.priceRangesWithMarkup.map((range, index) => ({
       index,
-      label: range.quantityTo !== null 
-        ? `${range.quantityFrom}-${range.quantityTo}`
-        : `${range.quantityFrom}+`,
+      label: range.quantityTo !== null ? `${range.quantityFrom}-${range.quantityTo}` : `${range.quantityFrom}+`,
     }));
   }, [snapshots]);
 
-  // Extract price time series for the selected range
-  const pricePoints = useMemo(() => {
-    const dataPoints: any[] = [];
-
+  const priceTypeMeta = useMemo(() => {
+    const ids = new Map<number, { id: number; name: string }>();
     snapshots.forEach((snapshot) => {
-      const timestamp = parseDateTime(snapshot.dateTime);
-      
-      // Use the selected price range, fallback to first range if selected doesn't exist
-      const selectedRange = snapshot.json.priceRangesWithMarkup[selectedRangeIndex] 
-        || snapshot.json.priceRangesWithMarkup[0];
-      
-      if (selectedRange) {
-        selectedRange.prices.forEach((price) => {
-          // If empty array, show nothing. If has values, filter by them
-          if (selectedPriceTypeIds.length === 0 || selectedPriceTypeIds.includes(price.typeId)) {
-            dataPoints.push({
-              timestamp,
-              dateTime: snapshot.dateTime,
-              snapshotId: snapshot.id,
-              priceType: price.typeName,
-              priceTypeId: price.typeId,
-              value: price.basePrice,
-              currency: price.currency,
-            });
-          }
-        });
-      }
+      const range = snapshot.json.priceRangesWithMarkup[selectedRangeIndex] || snapshot.json.priceRangesWithMarkup[0];
+      range?.prices.forEach((price) => {
+        if (selectedPriceTypeIds.length === 0 || selectedPriceTypeIds.includes(price.typeId)) {
+          ids.set(price.typeId, { id: price.typeId, name: price.typeName });
+        }
+      });
     });
-
-    dataPoints.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-    const priceTypeGroups = new Map<number, any[]>();
-    dataPoints.forEach((point) => {
-      if (!priceTypeGroups.has(point.priceTypeId)) {
-        priceTypeGroups.set(point.priceTypeId, []);
-      }
-      priceTypeGroups.get(point.priceTypeId)!.push(point);
-    });
-
-    priceTypeGroups.forEach((points) => {
-      for (let i = 1; i < points.length; i++) {
-        const current = points[i];
-        const previous = points[i - 1];
-        current.delta = current.value - previous.value;
-        current.deltaPercent = ((current.delta / previous.value) * 100);
-      }
-    });
-
-    return dataPoints;
+    return Array.from(ids.values()).sort((a, b) => a.id - b.id);
   }, [snapshots, selectedPriceTypeIds, selectedRangeIndex]);
 
+  const colorByTypeId = useMemo(() => {
+    const m = new Map<number, string>();
+    priceTypeMeta.forEach((item, index) => m.set(item.id, BASE_COLORS[index % BASE_COLORS.length]));
+    return m;
+  }, [priceTypeMeta]);
+
   const chartData = useMemo(() => {
-    const groupedByTimestamp = new Map<number, Record<string, number | string>>();
+    return snapshots
+      .map((snapshot) => {
+        const row: Record<string, string | number> = {
+          timestamp: parseDateTime(snapshot.dateTime).getTime(),
+          dateTime: formatDateTime(parseDateTime(snapshot.dateTime)),
+          direct: snapshot.json.directPurchasePrice,
+          cost: snapshot.json.purchasePrice,
+          overhead: snapshot.json.purchasePrice - snapshot.json.directPurchasePrice,
+        };
 
-    pricePoints.forEach((point) => {
-      const timestamp = point.timestamp.getTime();
-
-      if (!groupedByTimestamp.has(timestamp)) {
-        groupedByTimestamp.set(timestamp, {
-          timestamp,
-          dateTime: formatDateTime(point.timestamp),
+        const range = snapshot.json.priceRangesWithMarkup[selectedRangeIndex] || snapshot.json.priceRangesWithMarkup[0];
+        range?.prices.forEach((price) => {
+          if (selectedPriceTypeIds.length === 0 || selectedPriceTypeIds.includes(price.typeId)) {
+            row[`p_${price.typeId}`] = price.basePrice;
+          }
         });
-      }
 
-      const dataPoint = groupedByTimestamp.get(timestamp)!;
-      dataPoint[`${point.priceType}_${point.priceTypeId}`] = point.value;
-    });
+        return row;
+      })
+      .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+  }, [snapshots, selectedPriceTypeIds, selectedRangeIndex]);
 
-    return Array.from(groupedByTimestamp.values()).sort((a, b) => {
-      const aTime = typeof a.timestamp === 'number' ? a.timestamp : 0;
-      const bTime = typeof b.timestamp === 'number' ? b.timestamp : 0;
-      return aTime - bTime;
-    });
-  }, [pricePoints]);
-
-  const priceTypeKeys = useMemo(() => {
-    if (chartData.length === 0) return [];
-
-    const keys = Object.keys(chartData[0]).filter(
-      (key) => key !== 'timestamp' && key !== 'dateTime'
-    );
-
-    return keys;
-  }, [chartData]);
-
-  const visibleKeys = useMemo(() => {
-    return priceTypeKeys.filter((key) => {
-      const typeId = parseInt(key.split('_')[1]);
-      return !hiddenPriceTypes.has(typeId);
-    });
-  }, [priceTypeKeys, hiddenPriceTypes]);
-
-  const togglePriceType = (key: string) => {
-    const typeId = parseInt(key.split('_')[1]);
-    setHiddenPriceTypes((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(typeId)) {
-        newSet.delete(typeId);
-      } else {
-        newSet.add(typeId);
-      }
-      return newSet;
-    });
-  };
+  const visibleMeta = priceTypeMeta.filter((item) => !hiddenPriceTypes.has(item.id));
 
   if (snapshots.length === 0) {
-    return (
-      <Card className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <ChartLine size={20} className="text-primary" />
-          <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
-        </div>
-        <div className="flex items-center justify-center h-64 text-muted-foreground">
-          Нет данных для отображения. Выберите фильтры для загрузки данных.
-        </div>
-      </Card>
-    );
+    return <Card className="p-4"><div className="flex items-center justify-center h-64 text-muted-foreground">Нет данных для отображения.</div></Card>;
   }
 
   return (
@@ -157,45 +82,25 @@ export function PriceDynamicsChart({
           <ChartLine size={20} className="text-primary" />
           <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
         </div>
-
         {availableRanges.length > 1 && (
-          <Select 
-            value={selectedRangeIndex.toString()} 
-            onValueChange={(value) => setSelectedRangeIndex(parseInt(value))}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Выберите диапазон" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableRanges.map((range) => (
-                <SelectItem key={range.index} value={range.index.toString()}>
-                  Количество: {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
+          <Select value={selectedRangeIndex.toString()} onValueChange={(value) => setSelectedRangeIndex(parseInt(value))}>
+            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Выберите диапазон" /></SelectTrigger>
+            <SelectContent>{availableRanges.map((range) => <SelectItem key={range.index} value={range.index.toString()}>Количество: {range.label}</SelectItem>)}</SelectContent>
           </Select>
         )}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        {priceTypeKeys.map((key, index) => {
-          const [label, typeIdStr] = key.split('_');
-          const typeId = parseInt(typeIdStr);
-          const isHidden = hiddenPriceTypes.has(typeId);
-
+        {priceTypeMeta.map((item) => {
+          const isHidden = hiddenPriceTypes.has(item.id);
+          const color = colorByTypeId.get(item.id) || BASE_COLORS[0];
           return (
-            <Badge
-              key={key}
-              variant={isHidden ? 'outline' : 'default'}
-              className="cursor-pointer transition-colors"
-              style={{
-                backgroundColor: isHidden ? 'transparent' : getChartColor(index),
-                borderColor: getChartColor(index),
-                color: isHidden ? getChartColor(index) : 'white',
-              }}
-              onClick={() => togglePriceType(key)}
-            >
-              {label}
+            <Badge key={item.id} variant={isHidden ? 'outline' : 'default'} className="cursor-pointer" style={{ backgroundColor: isHidden ? 'transparent' : color, borderColor: color, color: isHidden ? color : 'white' }} onClick={() => setHiddenPriceTypes((prev) => {
+              const n = new Set(prev);
+              if (n.has(item.id)) n.delete(item.id); else n.add(item.id);
+              return n;
+            })}>
+              {item.name}
             </Badge>
           );
         })}
@@ -204,81 +109,32 @@ export function PriceDynamicsChart({
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0 0)" />
-          <XAxis
-            dataKey="dateTime"
-            tick={{ fill: 'oklch(0.5 0 0)', fontSize: 12 }}
-            stroke="oklch(0.8 0 0)"
-          />
-          <YAxis
-            tick={{ fill: 'oklch(0.5 0 0)', fontSize: 12 }}
-            stroke="oklch(0.8 0 0)"
-            tickFormatter={(value) => value.toLocaleString('ru-RU')}
-          />
-          <Tooltip
-            content={({ active, payload }) => {
-              if (!active || !payload || payload.length === 0) return null;
-
-              const data = payload[0].payload;
-
-              return (
-                <div className="bg-card border border-border rounded-lg p-4 shadow-lg">
-                  <p className="font-semibold mb-2">{data.dateTime}</p>
-                  {payload
-                    .filter((entry) => visibleKeys.includes(entry.dataKey as string))
-                    .map((entry, index) => {
-                      const [label] = (entry.dataKey as string).split('_');
-                      const value = entry.value as number;
-
-                      // Use memoized pricePoints instead of recalculating
-                      const currentPoint = pricePoints.find(
-                        (p) =>
-                          formatDateTime(p.timestamp) === data.dateTime &&
-                          p.priceType === label
-                      );
-
-                      return (
-                        <div key={index} className="mt-2">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: entry.color }}
-                            />
-                            <span className="text-sm font-medium">{label}:</span>
-                            <span className="text-sm font-mono">
-                              {formatCurrency(value, 'RUB')}
-                            </span>
-                          </div>
-                          {currentPoint?.delta !== undefined && currentPoint.deltaPercent !== undefined && (
-                            <div className="ml-5 text-xs text-muted-foreground">
-                              {currentPoint.delta > 0 ? '+' : ''}
-                              {formatCurrency(currentPoint.delta, 'RUB')} (
-                              {currentPoint.delta > 0 ? '+' : ''}
-                              {formatPercent(currentPoint.deltaPercent)})
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-              );
-            }}
-          />
+          <XAxis dataKey="dateTime" />
+          <YAxis tickFormatter={(value) => Number(value).toLocaleString('ru-RU')} />
+          <Tooltip content={({ active, payload }) => {
+            if (!active || !payload || payload.length === 0) return null;
+            const data = payload[0].payload as any;
+            return <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm">
+              <div className="font-semibold mb-2">{data.dateTime}</div>
+              <div>Прямые затраты: <span className="font-mono">{formatCurrency(data.direct, 'RUB')}</span></div>
+              <div>Себестоимость: <span className="font-mono">{formatCurrency(data.cost, 'RUB')}</span></div>
+              <div>Накладные расходы: <span className="font-mono">{formatCurrency(data.overhead, 'RUB')}</span></div>
+              {visibleMeta.map((item) => {
+                const value = data[`p_${item.id}`];
+                if (value === undefined) return null;
+                const margin = Number(value) - Number(data.cost);
+                const marginPercent = Number(data.cost) > 0 ? (margin / Number(data.cost)) * 100 : 0;
+                return <div key={item.id} className="mt-1">{item.name}: <span className="font-mono">{formatCurrency(Number(value), 'RUB')}</span> <span className="text-green-600">Маржа: {formatCurrency(margin, 'RUB')} ({formatPercent(marginPercent)})</span></div>;
+              })}
+            </div>;
+          }} />
           <Legend />
-          {visibleKeys.map((key, index) => {
-            const [label] = key.split('_');
-            return (
-              <Line
-                key={key}
-                type="monotone"
-                dataKey={key}
-                name={label}
-                stroke={getChartColor(index)}
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            );
-          })}
+          <Line type="monotone" dataKey="direct" name="Прямые затраты" stroke="oklch(0.65 0.20 145)" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="cost" name="Себестоимость" stroke="oklch(0.70 0.18 35)" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="overhead" name="Накладные расходы" stroke="oklch(0.80 0.17 70)" strokeWidth={2} dot={false} />
+          {visibleMeta.map((item) => (
+            <Line key={item.id} type="monotone" dataKey={`p_${item.id}`} name={item.name} stroke={colorByTypeId.get(item.id)} strokeWidth={2} />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </Card>
