@@ -61,7 +61,7 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
       </div>
 
       <div className="mb-3 text-sm text-muted-foreground">
-        Показывает изменение закупочной и базовой себестоимости во времени. 
+        Показывает изменение прямых затрат и себестоимости во времени.
         Область между линиями представляет накладные расходы.
       </div>
 
@@ -104,7 +104,7 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: 'oklch(0.65 0.20 145)' }}
                         />
-                        <span className="text-sm font-medium">Закупочная себестоимость:</span>
+                        <span className="text-sm font-medium">Прямые затраты:</span>
                       </div>
                       <div className="ml-5 font-mono font-semibold">
                         {formatCurrency(data.directPurchasePrice, currency)}
@@ -122,7 +122,7 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: 'oklch(0.70 0.18 35)' }}
                         />
-                        <span className="text-sm font-medium">Базовая себестоимость:</span>
+                        <span className="text-sm font-medium">Себестоимость:</span>
                       </div>
                       <div className="ml-5 font-mono font-semibold">
                         {formatCurrency(data.purchasePrice, currency)}
@@ -140,7 +140,7 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
                         {formatCurrency(data.overhead, currency)}
                       </div>
                       <div className="ml-5 text-xs text-muted-foreground">
-                        {formatPercent(overheadPercent)} от закупочной
+                        {formatPercent(overheadPercent)} от прямых затрат
                       </div>
                     </div>
                   </div>
@@ -152,7 +152,7 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
           <Area
             type="monotone"
             dataKey="purchasePrice"
-            name="Базовая себестоимость"
+            name="Себестоимость"
             stroke="oklch(0.70 0.18 35)"
             fill="url(#overheadGradient)"
             strokeWidth={2}
@@ -160,7 +160,7 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
           <Area
             type="monotone"
             dataKey="directPurchasePrice"
-            name="Закупочная себестоимость"
+            name="Прямые затраты"
             stroke="oklch(0.65 0.20 145)"
             fill="oklch(0.65 0.20 145)"
             fillOpacity={0.1}

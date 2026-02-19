@@ -17,7 +17,7 @@ import type { FilterState } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-type ReportType = 'summary' | 'direct' | 'cost' | 'sales';
+type ReportType = 'summary' | 'direct' | 'cost';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,20 +67,19 @@ function DashboardContent() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="w-full px-4 py-4" data-dashboard-root>
         <div className="space-y-4">
-          <Card className="p-3">
-            <Tabs value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-                <TabsTrigger value="summary">Обобщённый</TabsTrigger>
-                <TabsTrigger value="direct">Прямые затраты</TabsTrigger>
-                <TabsTrigger value="cost">Себестоимость</TabsTrigger>
-                <TabsTrigger value="sales">Отпускная стоимость</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </Card>
-
           <DashboardFilters filters={filters} onFiltersChange={setFilters} />
 
           <StageOutputs snapshot={latestSnapshot} />
+
+          <Card className="p-3">
+            <Tabs value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="summary">Общий</TabsTrigger>
+                <TabsTrigger value="direct">Прямые затраты</TabsTrigger>
+                <TabsTrigger value="cost">Себестоимость</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </Card>
 
           {isLoading && (
             <div className="flex items-center justify-center h-64">
@@ -107,7 +106,6 @@ function DashboardContent() {
                   <SummaryCard snapshot={latestSnapshot} />
                   <CostDynamicsChart snapshots={snapshots} />
                   <PriceDynamicsChart snapshots={snapshots} selectedPriceTypeIds={filters.selectedPriceTypeIds} />
-                  <SnapshotComparison snapshots={snapshots} />
                 </>
               )}
 
@@ -118,22 +116,19 @@ function DashboardContent() {
                     <CostBreakdown snapshot={latestSnapshot} />
                     <CostTree snapshot={latestSnapshot} previousSnapshot={previousSnapshot} mode="direct" />
                   </div>
+                  <SnapshotComparison snapshots={snapshots} />
                 </>
               )}
 
               {reportType === 'cost' && (
                 <>
+                  <StageCostFormationChart snapshot={latestSnapshot} mode="cost" />
                   <PhysicalParametersChart snapshot={latestSnapshot} />
                   <CostTree snapshot={latestSnapshot} previousSnapshot={previousSnapshot} mode="cost" />
+                  <SnapshotComparison snapshots={snapshots} />
                 </>
               )}
 
-              {reportType === 'sales' && (
-                <>
-                  <PriceDynamicsChart snapshots={snapshots} selectedPriceTypeIds={filters.selectedPriceTypeIds} />
-                  <CostTree snapshot={latestSnapshot} previousSnapshot={previousSnapshot} mode="sales" />
-                </>
-              )}
             </>
           )}
 

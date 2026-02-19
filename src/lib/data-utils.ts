@@ -6,6 +6,8 @@ import type {
   ComparisonDelta,
   SnapshotComparison,
   AggregationLevel,
+  Detail,
+  Stage,
 } from './types';
 
 const CHART_COLORS = [
@@ -130,11 +132,12 @@ export function getCostBreakdownByDetail(snapshot: Snapshot): CostBreakdownItem[
   const total = snapshot.json.purchasePrice;
 
   snapshot.json.details.forEach((detail, index) => {
+    const directCost = getDetailDirectCost(detail);
     items.push({
       id: detail.detailId,
       name: detail.detailName,
-      value: detail.purchasePrice,
-      percentage: (detail.purchasePrice / total) * 100,
+      value: directCost,
+      percentage: total > 0 ? (directCost / total) * 100 : 0,
       color: CHART_COLORS[index % CHART_COLORS.length],
     });
   });
@@ -182,12 +185,12 @@ export function buildCostTree(snapshot: Snapshot): TreeNode[] {
     id: detail.detailId,
     name: detail.detailName,
     type: 'detail' as const,
-    cost: detail.purchasePrice,
-    percentage: (detail.purchasePrice / total) * 100,
-    width: detail.width,
-    length: detail.length,
-    height: detail.height,
-    weight: detail.weight,
+    cost: getDetailDirectCost(detail),
+    percentage: total > 0 ? (getDetailDirectCost(detail) / total) * 100 : 0,
+    width: getDetailDimension(detail, 'width'),
+    length: getDetailDimension(detail, 'length'),
+    height: getDetailDimension(detail, 'height'),
+    weight: getDetailDimension(detail, 'weight'),
     currency: detail.currency,
     outputs: detail.outputs,
     children: detail.stages.map((stage) => {
@@ -236,7 +239,7 @@ export function compareSnapshots(
   if (oldDirectPrice !== newDirectPrice) {
     stageDeltas.push({
       field: 'directPurchasePrice',
-      label: 'Себестоимость (закупочная)',
+      label: 'Прямые затраты',
       oldValue: oldDirectPrice,
       newValue: newDirectPrice,
       delta: newDirectPrice - oldDirectPrice,
@@ -356,8 +359,8 @@ export function formatKey(key: string): string {
     length: 'Длина (мм)',
     height: 'Высота (мм)',
     weight: 'Вес (г)',
-    purchasingPrice: 'Себестоимость',
-    basePrice: 'Отпускная цена',
+    purchasingPrice: 'Прямые затраты',
+    basePrice: 'Себестоимость',
     widthproduct: 'Ширина продукта',
     lengthproduct: 'Длина продукта',
     kolichestvo_listov_bumagi_s_priladkoy: 'Кол-во листов с приладкой',
@@ -371,4 +374,25 @@ export function formatKey(key: string): string {
   };
 
   return keyMap[key] || key;
+}
+
+export function getDetailDirectCost(detail: Detail): number {
+  return detail.outputs?.purchasingPrice ?? detail.purchasePrice ?? 0;
+}
+
+export function getDetailCost(detail: Detail): number {
+  return detail.outputs?.basePrice ?? detail.basePrice ?? 0;
+}
+
+export function getStageDirectCost(stage: Stage): number {
+  return stage.outputs?.purchasingPrice ?? 0;
+}
+
+export function getStageCost(stage: Stage): number {
+  return stage.outputs?.basePrice ?? 0;
+}
+
+export function getDetailDimension(detail: Detail, key: 'width' | 'length' | 'height' | 'weight'): number {
+  const rawValue = detail.outputs?.[key] ?? detail[key];
+  return typeof rawValue === 'number' ? rawValue : 0;
 }
