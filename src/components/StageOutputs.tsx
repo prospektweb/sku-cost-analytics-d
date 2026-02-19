@@ -3,7 +3,6 @@ import { Info } from '@phosphor-icons/react';
 import type { Snapshot } from '@/lib/types';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { formatCurrency, formatNumber } from '@/lib/data-utils';
 
 interface StageOutputsProps { snapshot: Snapshot | null; }
 
@@ -12,84 +11,25 @@ export function StageOutputs({ snapshot }: StageOutputsProps) {
 
   return (
     <Card className="p-4">
-      <Accordion type="single" collapsible defaultValue="calc-params" className="w-full">
-        <AccordionItem value="calc-params">
-          <AccordionTrigger><div className="flex items-center gap-2"><Info size={20} className="text-primary" /><h2 className="text-lg font-semibold">Параметры расчёта</h2></div></AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-4">
-              <section>
-                <h3 className="font-semibold mb-2">Параметры заказа</h3>
-                <Table><TableBody>{snapshot.json.parametrValues.map((param, index) => <TableRow key={index}><TableCell className="font-medium">{param.name}</TableCell><TableCell className="font-mono">{param.value}</TableCell></TableRow>)}</TableBody></Table>
-              </section>
-
-              <section>
-                <h3 className="font-semibold mb-2">Детали</h3>
-                {snapshot.json.details.map((detail) => (
-                  <Accordion key={detail.detailId} type="single" collapsible>
-                    <AccordionItem value={`detail-${detail.detailId}`} className="border rounded-md px-3">
-                      <AccordionTrigger>{detail.detailName}</AccordionTrigger>
-                      <AccordionContent>
-                        {detail.stages.map((stage) => {
-                          const overhead = (stage.outputs.basePrice || 0) - (stage.outputs.purchasingPrice || 0);
-                          return (
-                            <Accordion key={stage.stageId} type="single" collapsible>
-                              <AccordionItem value={`stage-${stage.stageId}`} className="border rounded-md px-3 mt-2">
-                                <AccordionTrigger>{stage.stageName}</AccordionTrigger>
-                                <AccordionContent>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-3">
-                                      <div className="text-sm font-medium">Добавлено на этапе</div>
-                                      <div className="border rounded p-2">
-                                        <div className="text-xs text-muted-foreground">Материал: {stage.added.material?.name || '—'}</div>
-                                        <div className="text-sm">Прямые затраты: {formatCurrency(stage.added.material?.purchasingPrice || 0, stage.currency)}</div>
-                                        <div className="text-sm">Себестоимость: {formatCurrency(stage.added.material?.basePrice || 0, stage.currency)}</div>
-                                      </div>
-                                      <div className="border rounded p-2">
-                                        <div className="text-xs text-muted-foreground">Операция: {stage.added.operation?.name || '—'}</div>
-                                        <div className="text-sm">Прямые затраты: {formatCurrency(stage.added.operation?.purchasingPrice || 0, stage.currency)}</div>
-                                        <div className="text-sm">Себестоимость: {formatCurrency(stage.added.operation?.basePrice || 0, stage.currency)}</div>
-                                      </div>
-                                    </div>
-                                    <div className="space-y-2 border rounded p-2">
-                                      <div className="text-sm font-medium">Габариты и вес</div>
-                                      <div className="text-sm">Ширина (мм): {Math.round(stage.outputs.width || 0)}</div>
-                                      <div className="text-sm">Длина (мм): {Math.round(stage.outputs.length || 0)}</div>
-                                      <div className="text-sm">Высота (мм): {Math.round(stage.outputs.height || 0)}</div>
-                                      <div className="text-sm">Вес (г): {Math.round(stage.outputs.weight || 0)}</div>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 pt-3 border-t">
-                                    <div><div className="text-xs text-muted-foreground">Прямые затраты (нарастающее)</div><div className="font-semibold font-mono">{formatCurrency(stage.outputs.purchasingPrice || 0, stage.currency)}</div></div>
-                                    <div><div className="text-xs text-muted-foreground">Накладные расходы (распределенные на этап)</div><div className="font-semibold font-mono">{formatCurrency(overhead, stage.currency)}</div></div>
-                                    <div><div className="text-xs text-muted-foreground">Себестоимость (нарастающее)</div><div className="font-semibold font-mono">{formatCurrency(stage.outputs.basePrice || 0, stage.currency)}</div></div>
-                                  </div>
-                                </AccordionContent>
-                              </AccordionItem>
-                            </Accordion>
-                          );
-                        })}
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                ))}
-              </section>
-
-              <section>
-                <h3 className="font-semibold mb-2">Наценки для групп покупателей</h3>
-                {snapshot.json.priceRangesWithMarkup.map((range, index) => (
-                  <div key={index} className="mb-3">
-                    <Table>
-                      <TableBody>
-                        {range.prices.map((price) => {
-                          const markup = price.purchasePrice > 0 ? ((price.basePrice - price.purchasePrice) / price.purchasePrice) * 100 : 0;
-                          return <TableRow key={price.typeId}><TableCell className="font-medium">{price.typeName}</TableCell><TableCell className="text-right font-mono">{formatNumber(price.purchasePrice)} {price.currency}</TableCell><TableCell className="text-right font-mono">{formatNumber(price.basePrice)} {price.currency}</TableCell><TableCell className="text-right font-mono text-green-600">+{formatNumber(markup)}%</TableCell></TableRow>;
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ))}
-              </section>
+      <Accordion type="single" collapsible defaultValue="order-params" className="w-full">
+        <AccordionItem value="order-params">
+          <AccordionTrigger>
+            <div className="flex items-center gap-2">
+              <Info size={20} className="text-primary" />
+              <h2 className="text-lg font-semibold">Параметры заказа</h2>
             </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Table>
+              <TableBody>
+                {snapshot.json.parametrValues.map((param, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{param.name}</TableCell>
+                    <TableCell className="font-mono">{param.value}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

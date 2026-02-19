@@ -1,48 +1,59 @@
-import type { ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
-import { ChartBar, Coin, TrendUp, ShoppingCart } from '@phosphor-icons/react';
+import { ChartBar, Coin, TrendUp, ShoppingCart, ArrowsLeftRight } from '@phosphor-icons/react';
 import type { Snapshot } from '@/lib/types';
-import { formatCurrency, formatPercent } from '@/lib/data-utils';
+import { formatCurrency, formatDateTime, formatNumber, formatPercent, parseDateTime } from '@/lib/data-utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from 'recharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, ReferenceLine } from 'recharts';
 
 interface SummaryCardProps {
-  snapshot: Snapshot | null;
+  snapshots: Snapshot[];
 }
 
-export function SummaryCard({ snapshot }: SummaryCardProps) {
-  if (!snapshot) {
-    return (
-      <Card className="p-4">
-        <div className="flex items-center justify-center h-14 text-muted-foreground">
-          Выберите период с данными для отображения показателей
-        </div>
-      </Card>
-    );
+
+export function SummaryCard({ snapshots }: SummaryCardProps) {
+  const sortedSnapshots = useMemo(
+    () => [...snapshots].sort((a, b) => parseDateTime(a.dateTime).getTime() - parseDateTime(b.dateTime).getTime()),
+    [snapshots]
+  );
+
+  const latestSnapshot = sortedSnapshots.at(-1) ?? null;
+  const [leftSnapshotId, setLeftSnapshotId] = useState<number | null>(latestSnapshot?.id ?? null);
+  const [rightSnapshotId, setRightSnapshotId] = useState<number | null>(null);
+
+  const leftSnapshot = sortedSnapshots.find((s) => s.id === leftSnapshotId) ?? latestSnapshot;
+  const rightSnapshot = sortedSnapshots.find((s) => s.id === rightSnapshotId) ?? null;
+
+  if (!leftSnapshot) {
+    return <Card className="p-4"><div className="flex items-center justify-center h-14 text-muted-foreground">Выберите период с данными для отображения показателей</div></Card>;
   }
 
-  const directPurchasePrice = snapshot.json.directPurchasePrice;
-  const purchasePrice = snapshot.json.purchasePrice;
-  const overheadAmount = purchasePrice - directPurchasePrice;
-  const overheadPercent = directPurchasePrice > 0
-    ? (overheadAmount / directPurchasePrice) * 100
-    : 0;
+  const leftMetrics = buildSnapshotMetrics(leftSnapshot);
+  const rightMetrics = rightSnapshot ? buildSnapshotMetrics(rightSnapshot) : null;
 
-  const firstPriceRange = snapshot.json.priceRangesWithMarkup[0];
-  const salesData = firstPriceRange
-    ? firstPriceRange.prices.map((price) => {
-      const margin = price.basePrice - purchasePrice;
-      const marginPercent = purchasePrice > 0 ? (margin / purchasePrice) * 100 : 0;
-      return {
-        typeId: price.typeId,
-        typeName: price.typeName,
-        value: price.basePrice,
-        currency: price.currency,
-        margin,
-        marginPercent,
-      };
-    })
-    : [];
+  const compareChartData = [
+    {
+      label: 'Прямые',
+      newer: leftMetrics.directPurchasePrice,
+      previous: rightMetrics?.directPurchasePrice ?? 0,
+    },
+    {
+      label: 'Себестоимость',
+      newer: leftMetrics.purchasePrice,
+      previous: rightMetrics?.purchasePrice ?? 0,
+    },
+    {
+      label: 'Накладные',
+      newer: leftMetrics.overheadAmount,
+      previous: rightMetrics?.overheadAmount ?? 0,
+    },
+    {
+      label: 'Сред. наценка',
+      newer: leftMetrics.avgMarkupAmount,
+      previous: rightMetrics?.avgMarkupAmount ?? 0,
+    },
+  ];
 
   return (
     <Card className="p-4">
@@ -55,39 +66,46 @@ export function SummaryCard({ snapshot }: SummaryCardProps) {
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px_1fr] gap-4 items-start">
               <div className="space-y-3">
-                <MetricCard icon={<ShoppingCart size={18} className="text-blue-500" />} title="Прямые затраты" value={formatCurrency(directPurchasePrice, snapshot.json.currency)} hint="Прямые затраты на производство" />
-                <MetricCard icon={<Coin size={18} className="text-green-500" />} title="Себестоимость" value={formatCurrency(purchasePrice, snapshot.json.currency)} hint="С учетом накладных расходов" />
-                <MetricCard icon={<TrendUp size={18} className="text-orange-500" />} title="Накладные расходы" value={formatPercent(overheadPercent)} hint={formatCurrency(overheadAmount, snapshot.json.currency)} />
+                <SnapshotSelector
+                  label="Снимок"
+                  value={leftSnapshot?.id.toString() ?? ''}
+                  placeholder="Выберите снимок"
+                  snapshots={sortedSnapshots}
+                  onChange={(v) => setLeftSnapshotId(v ? parseInt(v, 10) : null)}
+                />
+                <SnapshotMetrics metrics={leftMetrics} />
               </div>
 
-              <div className="bg-muted/30 rounded-lg p-4 min-h-[280px]">
+              <div className="bg-muted/20 rounded-lg p-3 min-h-[360px]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Coin size={18} className="text-purple-500" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Цены продажи</h3>
+                  <ArrowsLeftRight size={18} className="text-primary" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Рублевое сравнение</h3>
                 </div>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={salesData}>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={compareChartData} layout="vertical" margin={{ top: 8, right: 16, left: 16, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0 0)" />
-                    <XAxis dataKey="typeName" tick={{ fontSize: 12 }} />
-                    <YAxis tickFormatter={(v) => Number(v).toLocaleString('ru-RU')} width={90} />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload || payload.length === 0) return null;
-                        const row = payload[0].payload;
-                        return (
-                          <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm">
-                            <div className="font-semibold">{row.typeName}</div>
-                            <div className="font-mono">{formatCurrency(row.value, row.currency)}</div>
-                            <div className="text-green-600">Маржа: {formatCurrency(row.margin, row.currency)} ({formatPercent(row.marginPercent)})</div>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar dataKey="value" fill="oklch(0.60 0.15 280)" radius={[6, 6, 0, 0]} />
+                    <XAxis type="number" tickFormatter={(v) => formatNumber(v)} />
+                    <YAxis type="category" dataKey="label" width={110} />
+                    <ReferenceLine x={0} stroke="oklch(0.6 0 0)" />
+                    <Tooltip formatter={(v: number) => formatCurrency(v, leftSnapshot.json.currency)} />
+                    <Bar dataKey="newer" name="Более свежий" fill="oklch(0.65 0.20 145)" />
+                    <Bar dataKey="previous" name="Предыдущий" fill="oklch(0.72 0.02 260)" />
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+
+              <div className="space-y-3">
+                <SnapshotSelector
+                  label="Снимок для сравнения"
+                  value={rightSnapshotId?.toString() ?? 'none'}
+                  placeholder="Не выбрано"
+                  snapshots={sortedSnapshots}
+                  allowEmpty
+                  onChange={(v) => setRightSnapshotId(v && v !== 'none' ? parseInt(v, 10) : null)}
+                />
+                {rightMetrics ? <SnapshotMetrics metrics={rightMetrics} /> : <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground text-center">Снимок для сравнения не выбран</div>}
               </div>
             </div>
           </AccordionContent>
@@ -95,6 +113,106 @@ export function SummaryCard({ snapshot }: SummaryCardProps) {
       </Accordion>
     </Card>
   );
+}
+
+function SnapshotSelector({
+  label,
+  value,
+  placeholder,
+  snapshots,
+  onChange,
+  allowEmpty,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  snapshots: Snapshot[];
+  onChange: (value: string) => void;
+  allowEmpty?: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {allowEmpty && <SelectItem value="none">Не выбрано</SelectItem>}
+          {snapshots.map((snapshot) => (
+            <SelectItem key={snapshot.id} value={snapshot.id.toString()}>
+              {formatDateTime(parseDateTime(snapshot.dateTime))}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function SnapshotMetrics({ metrics }: { metrics: ReturnType<typeof buildSnapshotMetrics> }) {
+  return (
+    <div className="space-y-3">
+      <MetricCard icon={<ShoppingCart size={18} className="text-blue-500" />} title="Прямые затраты" value={formatCurrency(metrics.directPurchasePrice, metrics.currency)} hint="Прямые затраты на производство" />
+      <MetricCard icon={<Coin size={18} className="text-green-500" />} title="Себестоимость" value={formatCurrency(metrics.purchasePrice, metrics.currency)} hint="С учетом накладных расходов" />
+      <MetricCard icon={<TrendUp size={18} className="text-orange-500" />} title="Накладные расходы" value={formatPercent(metrics.overheadPercent)} hint={formatCurrency(metrics.overheadAmount, metrics.currency)} />
+
+      <div className="bg-muted/30 rounded-lg p-4">
+        <div className="text-sm font-medium text-muted-foreground">Средняя наценка</div>
+        <div className="text-2xl font-bold font-mono">{formatPercent(metrics.avgMarkupPercent)}</div>
+        <div className="text-xs text-muted-foreground">{formatCurrency(metrics.avgMarkupAmount, metrics.currency)}</div>
+        <div className="mt-3 space-y-2">
+          {metrics.salePrices.map((price) => (
+            <div key={price.typeId} className="flex items-center justify-between text-sm" title={price.typeName}>
+              <span className="text-muted-foreground">Отпускные цены</span>
+              <div className="font-mono">
+                <span className="text-green-600">+{formatNumber(price.markupPercent)}%</span>
+                <span className="ml-3">{formatCurrency(price.basePrice, metrics.currency)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildSnapshotMetrics(snapshot: Snapshot) {
+  const directPurchasePrice = snapshot.json.directPurchasePrice;
+  const purchasePrice = snapshot.json.purchasePrice;
+  const overheadAmount = purchasePrice - directPurchasePrice;
+  const overheadPercent = directPurchasePrice > 0 ? (overheadAmount / directPurchasePrice) * 100 : 0;
+
+  const prices = snapshot.json.priceRangesWithMarkup[0]?.prices ?? [];
+  const salePrices = prices.map((price) => {
+    const markupAmount = price.basePrice - price.purchasePrice;
+    return {
+      typeId: price.typeId,
+      typeName: price.typeName,
+      basePrice: price.basePrice,
+      markupAmount,
+      markupPercent: price.purchasePrice > 0 ? (markupAmount / price.purchasePrice) * 100 : 0,
+    };
+  });
+
+  const avgMarkupAmount = salePrices.length > 0
+    ? salePrices.reduce((sum, item) => sum + item.markupAmount, 0) / salePrices.length
+    : 0;
+
+  const avgMarkupPercent = salePrices.length > 0
+    ? salePrices.reduce((sum, item) => sum + item.markupPercent, 0) / salePrices.length
+    : 0;
+
+  return {
+    currency: snapshot.json.currency,
+    directPurchasePrice,
+    purchasePrice,
+    overheadAmount,
+    overheadPercent,
+    avgMarkupAmount,
+    avgMarkupPercent,
+    salePrices,
+  };
 }
 
 function MetricCard({ icon, title, value, hint }: { icon: ReactNode; title: string; value: string; hint: string }) {
