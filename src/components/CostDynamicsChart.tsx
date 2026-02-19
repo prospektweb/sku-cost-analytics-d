@@ -26,6 +26,7 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
     })).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }, [snapshots]);
 
+  // Calculate deltas for tooltip annotations
   const annotatedData = useMemo(() => {
     return chartData.map((point, index) => {
       if (index === 0) return point;
@@ -83,7 +84,7 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
             </div>
 
       <div className="mb-3 text-sm text-muted-foreground">
-        Показывает изменение закупочной и базовой себестоимости во времени. 
+        Показывает изменение закупочной и базовой себестоимости во времени.
         Область между линиями представляет накладные расходы.
       </div>
 
