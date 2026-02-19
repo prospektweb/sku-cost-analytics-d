@@ -4,20 +4,13 @@ import { Toaster } from '@/components/ui/sonner';
 import { DashboardFilters } from '@/components/DashboardFilters';
 import { SummaryCard } from '@/components/SummaryCard';
 import { CostDynamicsChart } from '@/components/CostDynamicsChart';
-import { PriceDynamicsChart } from '@/components/PriceDynamicsChart';
 import { StageCostFormationChart } from '@/components/StageCostFormationChart';
 import { CostBreakdown } from '@/components/CostBreakdown';
-import { CostTree } from '@/components/CostTree';
-import { PhysicalParametersChart } from '@/components/PhysicalParametersChart';
-import { SnapshotComparison } from '@/components/SnapshotComparison';
 import { StageOutputs } from '@/components/StageOutputs';
+import { DetailsBlock } from '@/components/DetailsBlock';
 import { api } from '@/lib/api';
 import { useDashboardStore } from '@/lib/store';
 import type { FilterState } from '@/lib/types';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-type ReportType = 'summary' | 'direct' | 'cost';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,7 +31,6 @@ function DashboardContent() {
     presetId: null,
     selectedPriceTypeIds: [],
   });
-  const [reportType, setReportType] = useState<ReportType>('summary');
 
   const { data: snapshots = [], isLoading, error } = useQuery({
     queryKey: ['snapshots', filters],
@@ -47,7 +39,6 @@ function DashboardContent() {
   });
 
   const latestSnapshot = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
-  const previousSnapshot = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
 
   if (!isInitialized) {
     return (
@@ -55,9 +46,7 @@ function DashboardContent() {
         <div className="text-center space-y-4">
           <div className="animate-pulse rounded-full h-16 w-16 border-4 border-primary border-t-transparent mx-auto" />
           <p className="text-xl font-medium">Ожидание данных...</p>
-          <p className="text-sm text-muted-foreground">
-            Приложение ожидает получения данных через postMessage
-          </p>
+          <p className="text-sm text-muted-foreground">Приложение ожидает получения данных через postMessage</p>
         </div>
       </div>
     );
@@ -68,18 +57,7 @@ function DashboardContent() {
       <div className="w-full px-4 py-4" data-dashboard-root>
         <div className="space-y-4">
           <DashboardFilters filters={filters} onFiltersChange={setFilters} />
-
           <StageOutputs snapshot={latestSnapshot} />
-
-          <Card className="p-3">
-            <Tabs value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="summary">Общий</TabsTrigger>
-                <TabsTrigger value="direct">Прямые затраты</TabsTrigger>
-                <TabsTrigger value="cost">Себестоимость</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </Card>
 
           {isLoading && (
             <div className="flex items-center justify-center h-64">
@@ -93,42 +71,17 @@ function DashboardContent() {
           {error && (
             <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
               <p className="text-destructive font-semibold">Ошибка загрузки данных</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Попробуйте изменить фильтры или обновить страницу
-              </p>
+              <p className="text-sm text-muted-foreground mt-2">Попробуйте изменить фильтры или обновить страницу</p>
             </div>
           )}
 
           {!isLoading && !error && snapshots.length > 0 && (
             <>
-              {reportType === 'summary' && (
-                <>
-                  <SummaryCard snapshot={latestSnapshot} />
-                  <CostDynamicsChart snapshots={snapshots} />
-                  <PriceDynamicsChart snapshots={snapshots} selectedPriceTypeIds={filters.selectedPriceTypeIds} />
-                </>
-              )}
-
-              {reportType === 'direct' && (
-                <>
-                  <StageCostFormationChart snapshot={latestSnapshot} />
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    <CostBreakdown snapshot={latestSnapshot} />
-                    <CostTree snapshot={latestSnapshot} previousSnapshot={previousSnapshot} mode="direct" />
-                  </div>
-                  <SnapshotComparison snapshots={snapshots} />
-                </>
-              )}
-
-              {reportType === 'cost' && (
-                <>
-                  <StageCostFormationChart snapshot={latestSnapshot} mode="cost" />
-                  <PhysicalParametersChart snapshot={latestSnapshot} />
-                  <CostTree snapshot={latestSnapshot} previousSnapshot={previousSnapshot} mode="cost" />
-                  <SnapshotComparison snapshots={snapshots} />
-                </>
-              )}
-
+              <DetailsBlock snapshot={latestSnapshot} />
+              <SummaryCard snapshots={snapshots} />
+              <CostDynamicsChart snapshots={snapshots} />
+              <CostBreakdown snapshot={latestSnapshot} />
+              <StageCostFormationChart snapshot={latestSnapshot} />
             </>
           )}
 
@@ -136,9 +89,7 @@ function DashboardContent() {
             <div className="flex items-center justify-center h-64 bg-card rounded-lg border border-border">
               <div className="text-center space-y-3">
                 <p className="text-lg font-medium">Данные не найдены</p>
-                <p className="text-sm text-muted-foreground">
-                  Попробуйте изменить параметры фильтрации
-                </p>
+                <p className="text-sm text-muted-foreground">Попробуйте изменить параметры фильтрации</p>
               </div>
             </div>
           )}
