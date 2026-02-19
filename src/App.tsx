@@ -77,8 +77,8 @@ function DashboardContent() {
 
           {!isLoading && !error && snapshots.length > 0 && (
             <>
-              <SummaryCard snapshots={snapshots} />
               <DetailsBlock snapshot={latestSnapshot} />
+              <SummaryCard snapshots={snapshots} />
               <CostDynamicsChart snapshots={snapshots} />
               <CostBreakdown snapshot={latestSnapshot} />
               <StageCostFormationChart snapshot={latestSnapshot} />

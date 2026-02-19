@@ -6,6 +6,7 @@ import type { Snapshot, Detail } from '@/lib/types';
 import { formatCurrency, formatNumber } from '@/lib/data-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface StageCostFormationChartProps {
   snapshot: Snapshot | null;
@@ -20,18 +21,34 @@ export function StageCostFormationChart({ snapshot }: StageCostFormationChartPro
     }
   }, [snapshot, selectedDetailId]);
 
-  if (!snapshot) {
-    return <Card className="p-4"><div className="flex items-center justify-center h-64 text-muted-foreground">Выберите период с данными для отображения</div></Card>;
-  }
+  return (
+    <Card className="p-4">
+      <Accordion type="single" collapsible defaultValue="direct-formation" className="w-full">
+        <AccordionItem value="direct-formation" className="border-none">
+          <AccordionTrigger className="py-2">
+            <div className="flex items-center gap-2"><ChartBar size={20} className="text-primary" /><h2 className="text-lg font-semibold">Формирование прямых затрат</h2></div>
+          </AccordionTrigger>
+          <AccordionContent>
+            {!snapshot ? (
+              <div className="flex items-center justify-center h-64 text-muted-foreground">Выберите период с данными для отображения</div>
+            ) : (
+              <DirectFormationBody snapshot={snapshot} selectedDetailId={selectedDetailId} onDetailChange={setSelectedDetailId} />
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </Card>
+  );
+}
 
+function DirectFormationBody({ snapshot, selectedDetailId, onDetailChange }: { snapshot: Snapshot; selectedDetailId: string; onDetailChange: (v: string) => void }) {
   const selectedDetail = snapshot.json.details.find(d => d.detailId === selectedDetailId);
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2"><ChartBar size={20} className="text-primary" /><h2 className="text-lg font-semibold">Формирование прямых затрат</h2></div>
+    <>
+      <div className="flex justify-end mb-3">
         {snapshot.json.details.length > 1 && (
-          <Select value={selectedDetailId} onValueChange={setSelectedDetailId}><SelectTrigger className="w-[280px]"><SelectValue placeholder="Выберите деталь" /></SelectTrigger><SelectContent>{snapshot.json.details.map((detail) => <SelectItem key={detail.detailId} value={detail.detailId}>{detail.detailName}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedDetailId} onValueChange={onDetailChange}><SelectTrigger className="w-[280px]"><SelectValue placeholder="Выберите деталь" /></SelectTrigger><SelectContent>{snapshot.json.details.map((detail) => <SelectItem key={detail.detailId} value={detail.detailId}>{detail.detailName}</SelectItem>)}</SelectContent></Select>
         )}
       </div>
 
@@ -42,7 +59,7 @@ export function StageCostFormationChart({ snapshot }: StageCostFormationChartPro
           <TabsContent value="stacked"><StackedBarChart detail={selectedDetail} currency={snapshot.json.currency} /></TabsContent>
         </Tabs>
       ) : <div className="flex items-center justify-center h-64 text-muted-foreground">Нет данных для отображения</div>}
-    </Card>
+    </>
   );
 }
 

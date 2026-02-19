@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
-import { ChartBar, Coin, TrendUp, ShoppingCart, ArrowsLeftRight } from '@phosphor-icons/react';
+import { ChartBar, Coin, TrendUp, ShoppingCart, ArrowsLeftRight, Percent } from '@phosphor-icons/react';
 import type { Snapshot } from '@/lib/types';
 import { formatCurrency, formatDateTime, formatNumber, formatPercent, parseDateTime } from '@/lib/data-utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -10,7 +10,6 @@ import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Ba
 interface SummaryCardProps {
   snapshots: Snapshot[];
 }
-
 
 export function SummaryCard({ snapshots }: SummaryCardProps) {
   const sortedSnapshots = useMemo(
@@ -33,26 +32,10 @@ export function SummaryCard({ snapshots }: SummaryCardProps) {
   const rightMetrics = rightSnapshot ? buildSnapshotMetrics(rightSnapshot) : null;
 
   const compareChartData = [
-    {
-      label: 'Прямые',
-      newer: leftMetrics.directPurchasePrice,
-      previous: rightMetrics?.directPurchasePrice ?? 0,
-    },
-    {
-      label: 'Себестоимость',
-      newer: leftMetrics.purchasePrice,
-      previous: rightMetrics?.purchasePrice ?? 0,
-    },
-    {
-      label: 'Накладные',
-      newer: leftMetrics.overheadAmount,
-      previous: rightMetrics?.overheadAmount ?? 0,
-    },
-    {
-      label: 'Сред. наценка',
-      newer: leftMetrics.avgMarkupAmount,
-      previous: rightMetrics?.avgMarkupAmount ?? 0,
-    },
+    { label: 'Прямые', newer: leftMetrics.directPurchasePrice, previous: rightMetrics?.directPurchasePrice ?? 0 },
+    { label: 'Себестоимость', newer: leftMetrics.purchasePrice, previous: rightMetrics?.purchasePrice ?? 0 },
+    { label: 'Накладные', newer: leftMetrics.overheadAmount, previous: rightMetrics?.overheadAmount ?? 0 },
+    { label: 'Сред. наценка', newer: leftMetrics.avgMarkupAmount, previous: rightMetrics?.avgMarkupAmount ?? 0 },
   ];
 
   return (
@@ -66,7 +49,7 @@ export function SummaryCard({ snapshots }: SummaryCardProps) {
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px_1fr] gap-4 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr_300px] gap-4 items-start">
               <div className="space-y-3">
                 <SnapshotSelector
                   label="Снимок"
@@ -83,7 +66,7 @@ export function SummaryCard({ snapshots }: SummaryCardProps) {
                   <ArrowsLeftRight size={18} className="text-primary" />
                   <h3 className="text-sm font-medium text-muted-foreground">Рублевое сравнение</h3>
                 </div>
-                <ResponsiveContainer width="100%" height={320}>
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={compareChartData} layout="vertical" margin={{ top: 8, right: 16, left: 16, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0 0)" />
                     <XAxis type="number" tickFormatter={(v) => formatNumber(v)} />
@@ -105,7 +88,7 @@ export function SummaryCard({ snapshots }: SummaryCardProps) {
                   allowEmpty
                   onChange={(v) => setRightSnapshotId(v && v !== 'none' ? parseInt(v, 10) : null)}
                 />
-                {rightMetrics ? <SnapshotMetrics metrics={rightMetrics} /> : <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground text-center">Снимок для сравнения не выбран</div>}
+                {rightMetrics ? <SnapshotMetrics metrics={rightMetrics} alignRight /> : <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground text-center">Снимок для сравнения не выбран</div>}
               </div>
             </div>
           </AccordionContent>
@@ -115,21 +98,7 @@ export function SummaryCard({ snapshots }: SummaryCardProps) {
   );
 }
 
-function SnapshotSelector({
-  label,
-  value,
-  placeholder,
-  snapshots,
-  onChange,
-  allowEmpty,
-}: {
-  label: string;
-  value: string;
-  placeholder: string;
-  snapshots: Snapshot[];
-  onChange: (value: string) => void;
-  allowEmpty?: boolean;
-}) {
+function SnapshotSelector({ label, value, placeholder, snapshots, onChange, allowEmpty }: { label: string; value: string; placeholder: string; snapshots: Snapshot[]; onChange: (value: string) => void; allowEmpty?: boolean; }) {
   return (
     <div className="space-y-1">
       <div className="text-xs text-muted-foreground">{label}</div>
@@ -150,21 +119,25 @@ function SnapshotSelector({
   );
 }
 
-function SnapshotMetrics({ metrics }: { metrics: ReturnType<typeof buildSnapshotMetrics> }) {
+function SnapshotMetrics({ metrics, alignRight = false }: { metrics: ReturnType<typeof buildSnapshotMetrics>; alignRight?: boolean }) {
+  const alignClass = alignRight ? 'text-right' : '';
   return (
     <div className="space-y-3">
-      <MetricCard icon={<ShoppingCart size={18} className="text-blue-500" />} title="Прямые затраты" value={formatCurrency(metrics.directPurchasePrice, metrics.currency)} hint="Прямые затраты на производство" />
-      <MetricCard icon={<Coin size={18} className="text-green-500" />} title="Себестоимость" value={formatCurrency(metrics.purchasePrice, metrics.currency)} hint="С учетом накладных расходов" />
-      <MetricCard icon={<TrendUp size={18} className="text-orange-500" />} title="Накладные расходы" value={formatPercent(metrics.overheadPercent)} hint={formatCurrency(metrics.overheadAmount, metrics.currency)} />
+      <MetricCard icon={<ShoppingCart size={18} className="text-blue-500" />} title="Прямые затраты" value={formatCurrency(metrics.directPurchasePrice, metrics.currency)} hint="Прямые затраты на производство" alignRight={alignRight} />
+      <MetricCard icon={<Coin size={18} className="text-green-500" />} title="Себестоимость" value={formatCurrency(metrics.purchasePrice, metrics.currency)} hint="С учетом накладных расходов" alignRight={alignRight} />
+      <MetricCard icon={<TrendUp size={18} className="text-orange-500" />} title="Накладные расходы" value={formatPercent(metrics.overheadPercent)} hint={formatCurrency(metrics.overheadAmount, metrics.currency)} alignRight={alignRight} />
 
-      <div className="bg-muted/30 rounded-lg p-4">
-        <div className="text-sm font-medium text-muted-foreground">Средняя наценка</div>
+      <div className={`bg-muted/30 rounded-lg p-4 ${alignClass}`}>
+        <div className={`flex items-center gap-2 text-sm font-medium text-muted-foreground ${alignRight ? 'justify-end' : ''}`}>
+          <Percent size={18} className="text-purple-500" />
+          <span>Средняя наценка</span>
+        </div>
         <div className="text-2xl font-bold font-mono">{formatPercent(metrics.avgMarkupPercent)}</div>
         <div className="text-xs text-muted-foreground">{formatCurrency(metrics.avgMarkupAmount, metrics.currency)}</div>
         <div className="mt-3 space-y-2">
           {metrics.salePrices.map((price) => (
-            <div key={price.typeId} className="flex items-center justify-between text-sm" title={price.typeName}>
-              <span className="text-muted-foreground">Отпускные цены</span>
+            <div key={price.typeId} className={`flex items-center justify-between text-sm ${alignRight ? 'flex-row-reverse' : ''}`} title={price.typeName}>
+              <span className="text-muted-foreground">{price.typeName}</span>
               <div className="font-mono">
                 <span className="text-green-600">+{formatNumber(price.markupPercent)}%</span>
                 <span className="ml-3">{formatCurrency(price.basePrice, metrics.currency)}</span>
@@ -195,30 +168,16 @@ function buildSnapshotMetrics(snapshot: Snapshot) {
     };
   });
 
-  const avgMarkupAmount = salePrices.length > 0
-    ? salePrices.reduce((sum, item) => sum + item.markupAmount, 0) / salePrices.length
-    : 0;
+  const avgMarkupAmount = salePrices.length > 0 ? salePrices.reduce((sum, item) => sum + item.markupAmount, 0) / salePrices.length : 0;
+  const avgMarkupPercent = salePrices.length > 0 ? salePrices.reduce((sum, item) => sum + item.markupPercent, 0) / salePrices.length : 0;
 
-  const avgMarkupPercent = salePrices.length > 0
-    ? salePrices.reduce((sum, item) => sum + item.markupPercent, 0) / salePrices.length
-    : 0;
-
-  return {
-    currency: snapshot.json.currency,
-    directPurchasePrice,
-    purchasePrice,
-    overheadAmount,
-    overheadPercent,
-    avgMarkupAmount,
-    avgMarkupPercent,
-    salePrices,
-  };
+  return { currency: snapshot.json.currency, directPurchasePrice, purchasePrice, overheadAmount, overheadPercent, avgMarkupAmount, avgMarkupPercent, salePrices };
 }
 
-function MetricCard({ icon, title, value, hint }: { icon: ReactNode; title: string; value: string; hint: string }) {
+function MetricCard({ icon, title, value, hint, alignRight = false }: { icon: ReactNode; title: string; value: string; hint: string; alignRight?: boolean }) {
   return (
-    <div className="bg-muted/30 rounded-lg p-4">
-      <div className="flex items-center gap-2 mb-2">
+    <div className={`bg-muted/30 rounded-lg p-4 ${alignRight ? 'text-right' : ''}`}>
+      <div className={`flex items-center gap-2 mb-2 ${alignRight ? 'justify-end' : ''}`}>
         {icon}
         <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
       </div>
