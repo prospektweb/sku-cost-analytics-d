@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 import { Info } from '@phosphor-icons/react';
 import type { Snapshot } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { formatCurrency, formatNumber } from '@/lib/data-utils';
+import { formatCurrency } from '@/lib/data-utils';
 
 interface DetailsBlockProps {
   snapshot: Snapshot | null;
@@ -79,24 +79,6 @@ export function DetailsBlock({ snapshot }: DetailsBlockProps) {
               ))}
             </section>
 
-            <section className="mt-4">
-              <h3 className="font-semibold mb-2">Наценки для групп покупателей</h3>
-              {snapshot.json.priceRangesWithMarkup.map((range, index) => (
-                <div key={index} className="mb-3 border rounded-md p-2">
-                  {range.prices.map((price) => {
-                    const markup = price.purchasePrice > 0 ? ((price.basePrice - price.purchasePrice) / price.purchasePrice) * 100 : 0;
-                    return (
-                      <div key={price.typeId} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 text-sm py-1 border-b last:border-b-0">
-                        <span className="font-medium">{price.typeName}</span>
-                        <span className="text-right font-mono">{formatNumber(price.purchasePrice)} {price.currency}</span>
-                        <span className="text-right font-mono">{formatNumber(price.basePrice)} {price.currency}</span>
-                        <span className="text-right font-mono text-green-600">+{formatNumber(markup)}%</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </section>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
