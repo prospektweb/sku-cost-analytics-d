@@ -17,7 +17,7 @@ export function SummaryCard({ snapshots }: SummaryCardProps) {
     [snapshots]
   );
 
-  const latestSnapshot = sortedSnapshots.at(-1) ?? null;
+  const latestSnapshot = sortedSnapshots.length > 0 ? sortedSnapshots[sortedSnapshots.length - 1] : null;
   const [leftSnapshotId, setLeftSnapshotId] = useState<number | null>(latestSnapshot?.id ?? null);
   const [rightSnapshotId, setRightSnapshotId] = useState<number | null>(null);
 
