@@ -34,9 +34,9 @@ const MARKUP_COLORS = [
 ];
 
 export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
-  const [showDirect, setShowDirect] = useState(true);
+  const [showDirect, setShowDirect] = useState(false);
   const [showCost, setShowCost] = useState(true);
-  const [showOverhead, setShowOverhead] = useState(true);
+  const [showOverhead, setShowOverhead] = useState(false);
 
   const markupSeries = useMemo<MarkupSeriesMeta[]>(() => {
     const seen = new Map<number, string>();
@@ -112,41 +112,9 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
   };
 
   const header = (
-    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-2">
-        <ChartLine size={20} className="text-primary" />
-        <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        <SeriesToggleButton
-          label={BASE_SERIES.direct.label}
-          color={BASE_SERIES.direct.color}
-          active={showDirect}
-          onClick={() => setShowDirect((v) => !v)}
-        />
-        <SeriesToggleButton
-          label={BASE_SERIES.cost.label}
-          color={BASE_SERIES.cost.color}
-          active={showCost}
-          onClick={() => setShowCost((v) => !v)}
-        />
-        <SeriesToggleButton
-          label={BASE_SERIES.overhead.label}
-          color={BASE_SERIES.overhead.color}
-          active={showOverhead}
-          onClick={() => setShowOverhead((v) => !v)}
-        />
-        {markupSeries.map((series) => (
-          <SeriesToggleButton
-            key={series.typeId}
-            label={series.typeName}
-            color={series.color}
-            active={visibleMarkupSet.has(series.typeId)}
-            onClick={() => toggleMarkupType(series.typeId)}
-          />
-        ))}
-      </div>
+    <div className="flex items-center gap-2">
+      <ChartLine size={20} className="text-primary" />
+      <h2 className="text-lg font-semibold">Динамика цены во времени</h2>
     </div>
   );
 
@@ -175,6 +143,36 @@ export function CostDynamicsChart({ snapshots }: CostDynamicsChartProps) {
         <AccordionItem value="cost-dynamics" className="border-none">
           <AccordionTrigger className="py-2">{header}</AccordionTrigger>
           <AccordionContent>
+            <div className="mb-3 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <SeriesToggleButton
+                label={BASE_SERIES.direct.label}
+                color={BASE_SERIES.direct.color}
+                active={showDirect}
+                onClick={() => setShowDirect((v) => !v)}
+              />
+              <SeriesToggleButton
+                label={BASE_SERIES.cost.label}
+                color={BASE_SERIES.cost.color}
+                active={showCost}
+                onClick={() => setShowCost((v) => !v)}
+              />
+              <SeriesToggleButton
+                label={BASE_SERIES.overhead.label}
+                color={BASE_SERIES.overhead.color}
+                active={showOverhead}
+                onClick={() => setShowOverhead((v) => !v)}
+              />
+              {markupSeries.map((series) => (
+                <SeriesToggleButton
+                  key={series.typeId}
+                  label={series.typeName}
+                  color={series.color}
+                  active={visibleMarkupSet.has(series.typeId)}
+                  onClick={() => toggleMarkupType(series.typeId)}
+                />
+              ))}
+            </div>
+
             <ResponsiveContainer width="100%" height={350}>
               <AreaChart data={annotatedData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />

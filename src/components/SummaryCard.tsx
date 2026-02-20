@@ -31,6 +31,11 @@ export function SummaryCard({ snapshots }: SummaryCardProps) {
   const leftMetrics = buildSnapshotMetrics(leftSnapshot);
   const rightMetrics = rightSnapshot ? buildSnapshotMetrics(rightSnapshot) : null;
 
+  const leftSnapshotLabel = formatDateTime(parseDateTime(leftSnapshot.dateTime));
+  const rightSnapshotLabel = rightSnapshot
+    ? formatDateTime(parseDateTime(rightSnapshot.dateTime))
+    : 'Не выбрано';
+
   const compareChartData = [
     { label: 'Прямые', newer: leftMetrics.directPurchasePrice, previous: rightMetrics?.directPurchasePrice ?? 0 },
     { label: 'Себестоимость', newer: leftMetrics.purchasePrice, previous: rightMetrics?.purchasePrice ?? 0 },
@@ -73,8 +78,8 @@ export function SummaryCard({ snapshots }: SummaryCardProps) {
                     <YAxis type="category" dataKey="label" width={110} />
                     <ReferenceLine x={0} stroke="oklch(0.6 0 0)" />
                     <Tooltip formatter={(v: number) => formatCurrency(v, leftSnapshot.json.currency)} />
-                    <Bar dataKey="newer" name="Более свежий" fill="oklch(0.65 0.20 145)" />
-                    <Bar dataKey="previous" name="Предыдущий" fill="oklch(0.72 0.02 260)" />
+                    <Bar dataKey="newer" name={leftSnapshotLabel} fill="oklch(0.65 0.20 145)" />
+                    <Bar dataKey="previous" name={rightSnapshotLabel} fill="oklch(0.72 0.02 260)" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
