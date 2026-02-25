@@ -202,6 +202,50 @@ export function getCostBreakdownByStage(snapshot: Snapshot): CostBreakdownItem[]
   }));
 }
 
+export function getCostBreakdownByStageForDetail(snapshot: Snapshot, detailId: string): CostBreakdownItem[] {
+  const detailWithPath = flattenDetailsWithPath(snapshot.json.details).find(({ detail }) => detail.detailId === detailId);
+  if (!detailWithPath) {
+    return [];
+  }
+
+  const total = detailWithPath.detail.stages.reduce(
+    (sum, stage) => sum + (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0),
+    0,
+  );
+
+  return detailWithPath.detail.stages.map((stage, index) => {
+    const value = (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0);
+    const name = `${detailWithPath.path.join(' > ')} > ${stage.stageName}`;
+
+    return {
+      id: `${detailWithPath.detail.detailId}:${stage.stageId}`,
+      name,
+      value,
+      percentage: total > 0 ? (value / total) * 100 : 0,
+      color: CHART_COLORS[index % CHART_COLORS.length],
+    };
+  });
+}
+
+export function getOverallStageEstimate(snapshot: Snapshot): CostBreakdownItem[] {
+  const stageMap = new Map<string, number>();
+
+  flattenStagesWithContext(snapshot.json.details).forEach(({ stage }) => {
+    const stageCost = (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0);
+    stageMap.set(stage.stageName, (stageMap.get(stage.stageName) || 0) + stageCost);
+  });
+
+  const total = Array.from(stageMap.values()).reduce((sum, value) => sum + value, 0);
+
+  return Array.from(stageMap.entries()).map(([stageName, value], index) => ({
+    id: stageName,
+    name: stageName,
+    value,
+    percentage: total > 0 ? (value / total) * 100 : 0,
+    color: CHART_COLORS[index % CHART_COLORS.length],
+  }));
+}
+
 export function buildCostTree(snapshot: Snapshot): TreeNode[] {
   const total = snapshot.json.purchasePrice;
 
