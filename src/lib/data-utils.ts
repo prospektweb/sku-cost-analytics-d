@@ -10,6 +10,16 @@ import type {
   Stage,
 } from './types';
 
+interface DetailWithPath {
+  detail: Detail;
+  path: string[];
+}
+
+interface StageWithDetailContext {
+  stage: Stage;
+  detailPath: string[];
+}
+
 const CHART_COLORS = [
   'oklch(0.65 0.20 145)',
   'oklch(0.70 0.18 35)',
@@ -18,6 +28,20 @@ const CHART_COLORS = [
   'oklch(0.65 0.22 25)',
   'oklch(0.55 0.18 200)',
 ];
+
+function getDetailOwnDirectContribution(detail: Detail): number {
+  return detail.stages.reduce(
+    (sum, stage) => sum + (stage.added?.material?.purchasingPrice || 0) + (stage.added?.operation?.purchasingPrice || 0),
+    0,
+  );
+}
+
+function getDetailOwnCostContribution(detail: Detail): number {
+  return detail.stages.reduce(
+    (sum, stage) => sum + (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0),
+    0,
+  );
+}
 
 export function parseDateTime(dateTimeStr: string): Date {
   const [datePart, timePart] = dateTimeStr.split(' ');
@@ -130,12 +154,13 @@ export function extractPriceTimeSeries(
 export function getCostBreakdownByDetail(snapshot: Snapshot): CostBreakdownItem[] {
   const items: CostBreakdownItem[] = [];
   const total = snapshot.json.purchasePrice;
+  const allDetails = flattenDetailsWithPath(snapshot.json.details);
 
-  snapshot.json.details.forEach((detail, index) => {
-    const detailCost = getDetailCost(detail);
+  allDetails.forEach(({ detail, path }, index) => {
+    const detailCost = getDetailOwnCostContribution(detail);
     items.push({
       id: detail.detailId,
-      name: detail.detailName,
+      name: path.join(' > '),
       value: detailCost,
       percentage: total > 0 ? (detailCost / total) * 100 : 0,
       color: CHART_COLORS[index % CHART_COLORS.length],
@@ -148,24 +173,23 @@ export function getCostBreakdownByDetail(snapshot: Snapshot): CostBreakdownItem[
 export function getCostBreakdownByStage(snapshot: Snapshot): CostBreakdownItem[] {
   const stageMap = new Map<string, { name: string; value: number }>();
 
-  snapshot.json.details.forEach((detail) => {
-    detail.stages.forEach((stage) => {
+  flattenStagesWithContext(snapshot.json.details).forEach(({ stage, detailPath }) => {
       // Use added data to calculate stage cost contribution
       const stageCost =
         (stage.added?.material?.basePrice || 0) +
         (stage.added?.operation?.basePrice || 0);
 
-      const existing = stageMap.get(stage.stageId);
+      const stageKey = `${detailPath.join(' > ')} > ${stage.stageName}`;
+      const existing = stageMap.get(stageKey);
       if (existing) {
         existing.value += stageCost;
       } else {
-        stageMap.set(stage.stageId, {
-          name: stage.stageName,
+        stageMap.set(stageKey, {
+          name: stageKey,
           value: stageCost,
         });
       }
     });
-  });
 
   const total = Array.from(stageMap.values()).reduce((sum, item) => sum + item.value, 0);
 
@@ -181,12 +205,12 @@ export function getCostBreakdownByStage(snapshot: Snapshot): CostBreakdownItem[]
 export function buildCostTree(snapshot: Snapshot): TreeNode[] {
   const total = snapshot.json.purchasePrice;
 
-  return snapshot.json.details.map((detail) => ({
+  return flattenDetailsWithPath(snapshot.json.details).map(({ detail, path }) => ({
     id: detail.detailId,
-    name: detail.detailName,
+    name: path.join(' > '),
     type: 'detail' as const,
-    cost: getDetailDirectCost(detail),
-    percentage: total > 0 ? (getDetailDirectCost(detail) / total) * 100 : 0,
+    cost: getDetailOwnDirectContribution(detail),
+    percentage: total > 0 ? (getDetailOwnDirectContribution(detail) / total) * 100 : 0,
     width: getDetailDimension(detail, 'width'),
     length: getDetailDimension(detail, 'length'),
     height: getDetailDimension(detail, 'height'),
@@ -200,7 +224,7 @@ export function buildCostTree(snapshot: Snapshot): TreeNode[] {
         (stage.added?.operation?.basePrice || 0);
 
       return {
-        id: stage.stageId,
+        id: `${detail.detailId}:${stage.stageId}`,
         name: stage.stageName,
         type: 'stage' as const,
         cost: stageCost,
@@ -210,6 +234,27 @@ export function buildCostTree(snapshot: Snapshot): TreeNode[] {
       };
     }),
   }));
+}
+
+export function flattenDetailsWithPath(details: Detail[], parentPath: string[] = []): DetailWithPath[] {
+  return details.flatMap((detail) => {
+    const currentPath = [...parentPath, detail.detailName];
+    const ownNode: DetailWithPath = { detail, path: currentPath };
+    const childNodes = detail.children ? flattenDetailsWithPath(detail.children, currentPath) : [];
+    return [ownNode, ...childNodes];
+  });
+}
+
+export function flattenStagesWithContext(details: Detail[], parentPath: string[] = []): StageWithDetailContext[] {
+  return details.flatMap((detail) => {
+    const currentPath = [...parentPath, detail.detailName];
+    const ownStages = detail.stages.map((stage) => ({
+      stage,
+      detailPath: currentPath,
+    }));
+    const childStages = detail.children ? flattenStagesWithContext(detail.children, currentPath) : [];
+    return [...ownStages, ...childStages];
+  });
 }
 
 export function compareSnapshots(
