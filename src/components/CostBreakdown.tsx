@@ -72,7 +72,7 @@ export function CostBreakdown({ snapshot }: CostBreakdownProps) {
       </Card>
 
       <Card className="p-4">
-        <h2 className="text-lg font-semibold mb-3">Общая смета по всем этапам</h2>
+        <h2 className="text-lg font-semibold mb-3">Общая смета распределения себестоимости по всем этапам</h2>
         {!snapshot ? (
           <div className="flex items-center justify-center h-72 text-muted-foreground">Выберите период с данными для отображения сметы</div>
         ) : (

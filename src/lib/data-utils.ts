@@ -31,14 +31,14 @@ const CHART_COLORS = [
 
 function getDetailOwnDirectContribution(detail: Detail): number {
   return detail.stages.reduce(
-    (sum, stage) => sum + (stage.added?.material?.purchasingPrice || 0) + (stage.added?.operation?.purchasingPrice || 0),
+    (sum, stage) => sum + (stage.added?.material?.purchasingPrice || 0) + (stage.added?.operation?.purchasingPrice || 0) + (Array.isArray(stage.added?.equipment) ? 0 : (stage.added?.equipment?.purchasingPrice || 0)),
     0,
   );
 }
 
 function getDetailOwnCostContribution(detail: Detail): number {
   return detail.stages.reduce(
-    (sum, stage) => sum + (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0),
+    (sum, stage) => sum + (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0) + (Array.isArray(stage.added?.equipment) ? 0 : (stage.added?.equipment?.basePrice || 0)),
     0,
   );
 }
@@ -177,7 +177,8 @@ export function getCostBreakdownByStage(snapshot: Snapshot): CostBreakdownItem[]
       // Use added data to calculate stage cost contribution
       const stageCost =
         (stage.added?.material?.basePrice || 0) +
-        (stage.added?.operation?.basePrice || 0);
+        (stage.added?.operation?.basePrice || 0) +
+        (Array.isArray(stage.added?.equipment) ? 0 : (stage.added?.equipment?.basePrice || 0));
 
       const stageKey = `${detailPath.join(' > ')} > ${stage.stageName}`;
       const existing = stageMap.get(stageKey);
@@ -209,12 +210,12 @@ export function getCostBreakdownByStageForDetail(snapshot: Snapshot, detailId: s
   }
 
   const total = detailWithPath.detail.stages.reduce(
-    (sum, stage) => sum + (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0),
+    (sum, stage) => sum + (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0) + (Array.isArray(stage.added?.equipment) ? 0 : (stage.added?.equipment?.basePrice || 0)),
     0,
   );
 
   return detailWithPath.detail.stages.map((stage, index) => {
-    const value = (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0);
+    const value = (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0) + (Array.isArray(stage.added?.equipment) ? 0 : (stage.added?.equipment?.basePrice || 0));
     const name = `${detailWithPath.path.join(' > ')} > ${stage.stageName}`;
 
     return {
@@ -228,20 +229,21 @@ export function getCostBreakdownByStageForDetail(snapshot: Snapshot, detailId: s
 }
 
 export function getOverallStageEstimate(snapshot: Snapshot): CostBreakdownItem[] {
-  const stageMap = new Map<string, number>();
+  const stageMap = new Map<string, { name: string; value: number }>();
 
-  flattenStagesWithContext(snapshot.json.details).forEach(({ stage }) => {
-    const stageCost = (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0);
-    stageMap.set(stage.stageName, (stageMap.get(stage.stageName) || 0) + stageCost);
+  flattenStagesWithContext(snapshot.json.details).forEach(({ stage, detailPath }) => {
+    const stageCost = (stage.added?.material?.basePrice || 0) + (stage.added?.operation?.basePrice || 0) + (Array.isArray(stage.added?.equipment) ? 0 : (stage.added?.equipment?.basePrice || 0));
+    const key = `${detailPath.join(' > ')} > ${stage.stageName}`;
+    stageMap.set(key, { name: key, value: stageCost });
   });
 
-  const total = Array.from(stageMap.values()).reduce((sum, value) => sum + value, 0);
+  const total = Array.from(stageMap.values()).reduce((sum, item) => sum + item.value, 0);
 
-  return Array.from(stageMap.entries()).map(([stageName, value], index) => ({
-    id: stageName,
-    name: stageName,
-    value,
-    percentage: total > 0 ? (value / total) * 100 : 0,
+  return Array.from(stageMap.entries()).map(([id, item], index) => ({
+    id,
+    name: item.name,
+    value: item.value,
+    percentage: total > 0 ? (item.value / total) * 100 : 0,
     color: CHART_COLORS[index % CHART_COLORS.length],
   }));
 }
@@ -265,7 +267,8 @@ export function buildCostTree(snapshot: Snapshot): TreeNode[] {
       // Use added data to calculate stage cost
       const stageCost =
         (stage.added?.material?.basePrice || 0) +
-        (stage.added?.operation?.basePrice || 0);
+        (stage.added?.operation?.basePrice || 0) +
+        (Array.isArray(stage.added?.equipment) ? 0 : (stage.added?.equipment?.basePrice || 0));
 
       return {
         id: `${detail.detailId}:${stage.stageId}`,
@@ -361,7 +364,8 @@ export function compareSnapshots(
     detail.stages.forEach((stage) => {
       const stageCost =
         (stage.added?.material?.basePrice || 0) +
-        (stage.added?.operation?.basePrice || 0);
+        (stage.added?.operation?.basePrice || 0) +
+        (Array.isArray(stage.added?.equipment) ? 0 : (stage.added?.equipment?.basePrice || 0));
       
       const current = stageMapA.get(stage.stageName) || 0;
       stageMapA.set(stage.stageName, current + stageCost);
@@ -372,7 +376,8 @@ export function compareSnapshots(
     detail.stages.forEach((stage) => {
       const stageCost =
         (stage.added?.material?.basePrice || 0) +
-        (stage.added?.operation?.basePrice || 0);
+        (stage.added?.operation?.basePrice || 0) +
+        (Array.isArray(stage.added?.equipment) ? 0 : (stage.added?.equipment?.basePrice || 0));
       
       const current = stageMapB.get(stage.stageName) || 0;
       stageMapB.set(stage.stageName, current + stageCost);

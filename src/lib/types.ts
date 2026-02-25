@@ -23,7 +23,7 @@ export interface StageAdded {
     name?: string;
     purchasingPrice?: number;
     basePrice?: number;
-  };
+  } | [];
 }
 
 export interface StageReferenceValue {
